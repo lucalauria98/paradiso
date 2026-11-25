@@ -142,14 +142,20 @@
     </div>
     <label>Kategorie<input class="field" id="pmCat" list="pmCats" required maxlength="60"></label>
     <datalist id="pmCats"></datalist>
-    <div class="two">
-      <label>Preis nach<select class="field" id="pmUnit"><option value="kg">Gewicht (€/kg)</option><option value="stk">Stück (€/Stück)</option></select></label>
-      <label id="pmWeightL">Gewicht pro Stück (g)<input class="field" id="pmWeight" type="number" min="1" max="5000" step="1"></label>
-    </div>
-    <div class="two">
-      <label><span id="pmPminL">Preis ab</span><input class="field" id="pmPmin" type="number" min="0" max="9999" step="0.01" required></label>
-      <label><span id="pmPmaxL">Preis bis</span><input class="field" id="pmPmax" type="number" min="0" max="9999" step="0.01" required></label>
-    </div>
+    <fieldset class="size">
+      <label class="check"><input type="checkbox" id="pmMini"> <b>Mini</b> – nach Gewicht</label>
+      <div class="two" id="pmMiniFields">
+        <label>€ pro kg<input class="field" id="pmKg" type="number" min="0" max="999" step="0.01"></label>
+        <label>Gewicht pro Mini (g, geschätzt)<input class="field" id="pmWeight" type="number" min="1" max="5000" step="1"></label>
+      </div>
+    </fieldset>
+    <fieldset class="size">
+      <label class="check"><input type="checkbox" id="pmPiece"> <b>Normal</b> – pro Stück</label>
+      <div class="two" id="pmPieceFields">
+        <label>€ pro Stück von<input class="field" id="pmPmin" type="number" min="0" max="999" step="0.01"></label>
+        <label>bis <span class="cat-note">(gleich = Festpreis)</span><input class="field" id="pmPmax" type="number" min="0" max="999" step="0.01"></label>
+      </div>
+    </fieldset>
     <p class="cat-note" id="pmHint"></p>
     <div class="two">
       <label>Status<select class="field" id="pmStatus"><option value="active">Bestellbar</option><option value="soon">Bald dabei</option><option value="hidden">Ausgeblendet</option></select></label>

@@ -1,17 +1,18 @@
-import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtRange, lineCost } from "./api.js";
+import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtRange, lineCost, variantsOf, VARIANTS, variantLabel } from "./api.js";
 import { productTabs, inTab, chipsHtml, sectionsHtml, piecePrice, infoHtml } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const code = params.get("e") || (DEMO ? "demo" : "");
 const storeKey = "paradiso-guest-" + code;
-const draftKey = "paradiso-draft-" + code;
+const draftKey = "paradiso-draft2-" + code;
 
 let me = JSON.parse(localStorage.getItem(storeKey) || "null"); // {id, secret, name}
 let catalog, project, tabs, activeOrder, activeTab, submittedAt = null, busy = false;
-// Abgeschickter Stand (wie beim Admin) und Entwurf im Browser: "bestellung|produkt" → Menge
+// Abgeschickter Stand (wie beim Admin) und Entwurf im Browser: "bestellung|produkt|größe" → Menge
 let sent = new Map(), draft = new Map();
-const key = (orderId, productId) => orderId + "|" + productId;
+const key = (orderId, productId, v) => orderId + "|" + productId + "|" + v;
+const split = (k) => { const [order_id, product_id, variant] = k.split("|"); return { order_id, product_id, variant }; };
 const order = (id = activeOrder) => project.orders.find((o) => o.id === id);
 const prod = (id) => catalog.products.find((p) => p.id === id);
 
@@ -42,7 +43,7 @@ async function init() {
 
 async function loadMine() {
   const r = await api.guestItems(me.id, me.secret);
-  sent = new Map(r.items.map((i) => [key(i.order_id, i.product_id), i.qty]));
+  sent = new Map(r.items.map((i) => [key(i.order_id, i.product_id, i.variant), i.qty]));
   draft = new Map(sent);
   submittedAt = r.submitted_at;
 }
@@ -143,31 +144,37 @@ function renderCatalog() {
   $("catalog").onclick = onCatalogClick;
 }
 
+// Karte: je Größe (Mini / Normal) eine Zeile mit Preis und eigener Menge
 function cardHtml(p) {
-  const q = draft.get(key(activeOrder, p.id)) || 0;
+  const vs = variantsOf(p);
+  const total = vs.reduce((n, v) => n + (draft.get(key(activeOrder, p.id, v)) || 0), 0);
   const img = p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" data-zoom="${p.id}">`
     : `<div class="soon">Bild folgt</div>`;
-  const ctrl = p.coming_soon ? `<div class="meta">Bald dabei – noch nicht bestellbar</div>`
-    : order().closed ? `<div class="meta">${q ? q + " Stück gewählt" : ""}</div>`
-    : q ? stepperHtml(activeOrder, p.id, q) : `<button class="add" data-order="${activeOrder}" data-id="${p.id}" data-d="1">+ Hinzufügen</button>`;
-  return `<article class="card ${q ? "picked" : ""}" id="card-${p.id}">
-    <div class="ph">${img}${q ? `<span class="badge">${q}</span>` : ""}</div>
-    <div class="body"><div class="name">${esc(p.name)}</div>${p.coming_soon ? "" : `<div class="price">${piecePrice(p)}</div>`}<div class="foot">${ctrl}</div></div></article>`;
+  const rows = p.coming_soon ? `<div class="meta">Bald dabei – noch nicht bestellbar</div>` : vs.map((v) => {
+    const q = draft.get(key(activeOrder, p.id, v)) || 0;
+    const ctrl = order().closed ? (q ? `<div class="meta">${q} Stück gewählt</div>` : "")
+      : q ? stepperHtml(activeOrder, p.id, v, q)
+      : `<button class="add" data-order="${activeOrder}" data-id="${p.id}" data-v="${v}" data-d="1">+ ${vs.length > 1 ? VARIANTS[v] : "Hinzufügen"}</button>`;
+    return `<div class="variant ${q ? "on" : ""}"><div class="v-head">${vs.length > 1 ? `<b>${VARIANTS[v]}</b>` : ""}<span class="price">${piecePrice(p, v)}</span></div>${ctrl}</div>`;
+  }).join("");
+  return `<article class="card ${total ? "picked" : ""}" id="card-${p.id}">
+    <div class="ph">${img}${total ? `<span class="badge">${total}</span>` : ""}</div>
+    <div class="body"><div class="name">${esc(p.name)}</div><div class="foot">${rows}</div></div></article>`;
 }
 
-const stepperHtml = (orderId, id, q) =>
-  `<div class="stepper"><button data-order="${orderId}" data-id="${id}" data-d="-1" aria-label="weniger">−</button><span class="q">${q}</span><button data-order="${orderId}" data-id="${id}" data-d="1" aria-label="mehr">+</button></div>`;
+const stepperHtml = (orderId, id, v, q) =>
+  `<div class="stepper"><button data-order="${orderId}" data-id="${id}" data-v="${v}" data-d="-1" aria-label="weniger">−</button><span class="q">${q}</span><button data-order="${orderId}" data-id="${id}" data-v="${v}" data-d="1" aria-label="mehr">+</button></div>`;
 
 function onCatalogClick(e) {
   const z = e.target.closest("[data-zoom]");
   if (z) return zoom(z.dataset.zoom);
   const b = e.target.closest("button[data-id]");
-  if (b) change(b.dataset.order, b.dataset.id, +b.dataset.d);
+  if (b) change(b.dataset.order, b.dataset.id, b.dataset.v, +b.dataset.d);
 }
 
-function change(orderId, id, d) {
+function change(orderId, id, v, d) {
   if (order(orderId).closed) return;
-  const k = key(orderId, id);
+  const k = key(orderId, id, v);
   const q = Math.max(0, Math.min(500, (draft.get(k) || 0) + d));
   q ? draft.set(k, q) : draft.delete(k);
   persistDraft();
@@ -184,7 +191,7 @@ async function submit() {
   busy = true; renderBar();
   const before = new Set(changedKeys().map((k) => k.split("|")[0]));
   try {
-    const items = [...draft].map(([k, qty]) => ({ order_id: k.split("|")[0], product_id: k.split("|")[1], qty }));
+    const items = [...draft].map(([k, qty]) => ({ ...split(k), qty }));
     await api.guestSubmit(me.id, me.secret, items);
     project = await api.guestProject(code);
     await loadMine();
@@ -222,19 +229,20 @@ function renderSheet() {
   const multiShop = new Set(catalog.products.map((p) => p.shop)).size > 1;
   let total = [0, 0];
   const html = project.orders.map((o) => {
-    const list = catalog.products.filter((p) => draft.get(key(o.id, p.id)));
+    const list = catalog.products.flatMap((p) => variantsOf(p).filter((v) => draft.get(key(o.id, p.id, v))).map((v) => ({ p, v })));
     if (!list.length) return "";
-    return `<div class="shop-head">${esc(o.title)}${o.pickup_at ? " · " + esc(fmtPickup(o.pickup_at)) : ""}${o.closed ? " · geschlossen" : ""}</div>` + list.map((p) => {
-      const q = draft.get(key(o.id, p.id));
-      const c = lineCost(p, q); total = [total[0] + c[0], total[1] + c[1]];
+    return `<div class="shop-head">${esc(o.title)}${o.pickup_at ? " · " + esc(fmtPickup(o.pickup_at)) : ""}${o.closed ? " · geschlossen" : ""}</div>` + list.map(({ p, v }) => {
+      const q = draft.get(key(o.id, p.id, v));
+      const c = lineCost(p, q, v); total = [total[0] + c[0], total[1] + c[1]];
+      const size = variantLabel(p, v);
       return `<div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
-        <div class="grow">${esc(p.name)}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name : p.category)} · ${piecePrice(p)}</small></div>
-        ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, q)}</div>`;
+        <div class="grow">${esc(p.name)}${size ? ` <span class="size">${size}</span>` : ""}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name + " · " : "")}${piecePrice(p, v)} pro Stück</small></div>
+        ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, v, q)}</div>`;
     }).join("");
   }).join("");
   $("sheetBody").innerHTML = html || `<div class="empty">Noch nichts ausgewählt.<br>Tipp auf „+ Hinzufügen" bei einem Produkt.</div>`;
   $("sheetTotal").innerHTML = html ? `Geschätzt <b>${fmtRange(total)}</b>` : "";
-  $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.order, b.dataset.id, +b.dataset.d); };
+  $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.order, b.dataset.id, b.dataset.v, +b.dataset.d); };
 }
 
 function zoom(id) {

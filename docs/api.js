@@ -18,20 +18,24 @@ const dt = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", 
 export const fmtPickup = (iso) => (iso ? dt.format(new Date(iso)) + " Uhr" : "");
 const dtShort = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
 export const fmtWhen = (iso) => (iso ? dtShort.format(new Date(iso)) : "");
-// Kosten einer Position → [min, max] in €
-export function lineCost(p, qty) {
-  if (p.unit === "kg") {
-    const kg = (qty * (p.est_weight_g || 0)) / 1000;
-    return [kg * p.price_min, kg * p.price_max];
-  }
-  return [qty * p.price_min, qty * p.price_max];
+// ───────── Größen ─────────
+// Ein Produkt gibt es als Mini (nach Gewicht, €/kg) und/oder Normal (pro Stück, Spanne von–bis).
+export const VARIANTS = { mini: "Mini", stk: "Normal" };
+export const variantsOf = (p) => ["mini", "stk"].filter((v) => (v === "mini" ? p.mini_price_kg : p.piece_price_min) != null);
+// Größe nur nennen, wenn es das Produkt in beiden Größen gibt („Calzone (Mini)“ vs. „Cantucci“)
+export const variantLabel = (p, v) => (variantsOf(p).length > 1 ? VARIANTS[v] : "");
+export const withVariant = (p, v) => p.name + (variantLabel(p, v) ? ` (${variantLabel(p, v)})` : "");
+// Preis für ein Stück → [min, max] in €
+export function pieceCost(p, v) {
+  if (v === "mini") { const c = ((p.mini_weight_g || 0) / 1000) * (p.mini_price_kg || 0); return [c, c]; }
+  return [p.piece_price_min || 0, p.piece_price_max ?? p.piece_price_min ?? 0];
 }
-export const pieceCost = (p) => lineCost(p, 1);
-export const lineWeight = (p, qty) => (p.unit === "kg" ? qty * (p.est_weight_g || 0) : 0);
-export function priceLabel(p) {
-  return p.unit === "kg"
-    ? `${fmtEur(p.price_min)}/kg · ca. ${p.est_weight_g} g/Stück`
-    : p.price_min === p.price_max ? `${fmtEur(p.price_min)}/Stück` : `ca. ${p.price_min}–${p.price_max} €/Stück`;
+export const lineCost = (p, qty, v) => pieceCost(p, v).map((x) => x * qty);
+export const lineWeight = (p, qty, v) => (v === "mini" ? qty * (p.mini_weight_g || 0) : 0);
+export function priceLabel(p, v) {
+  if (v === "mini") return `${fmtEur(p.mini_price_kg)}/kg · ca. ${p.mini_weight_g} g/Stück`;
+  const [a, b] = pieceCost(p, "stk");
+  return Math.abs(a - b) < 0.005 ? `${fmtEur(a)}/Stück` : `ca. ${a}–${b} €/Stück`;
 }
 // Bestellungen nach Abholtermin (ohne Termin ans Ende), dann nach Anlage
 const byPickup = (a, b) => (a.pickup_at || "~").localeCompare(b.pickup_at || "~") || a.created_at.localeCompare(b.created_at);
@@ -39,8 +43,10 @@ const byPickup = (a, b) => (a.pickup_at || "~").localeCompare(b.pickup_at || "~"
 // ───────── Katalog ─────────
 // Gäste: nur aktive Produkte. Admin ({ all: true }): auch ausgeblendete, zum Bearbeiten.
 const catalogCache = {};
+const num = (v) => (v == null || v === "" ? null : +v);
 const normProduct = (x) => ({ active: true, coming_soon: false, kind: "suess", ...x, shop: x.shop_id ?? x.shop,
-  price_min: +x.price_min, price_max: +x.price_max, est_weight_g: x.est_weight_g == null ? null : +x.est_weight_g });
+  mini_price_kg: num(x.mini_price_kg), mini_weight_g: num(x.mini_weight_g),
+  piece_price_min: num(x.piece_price_min), piece_price_max: num(x.piece_price_max) });
 export async function loadCatalog({ all = false } = {}) {
   const k = all ? "all" : "active";
   if (catalogCache[k]) return catalogCache[k];
@@ -76,7 +82,7 @@ const must = ({ data, error }) => {
 };
 const rpc = async (fn, args) => must(await (await client()).rpc(fn, args));
 const table = async (t) => (await client()).from(t);
-const PRODUCT_COLS = ["id", "shop_id", "code", "category", "kind", "name", "image", "unit", "price_min", "price_max", "est_weight_g", "sort", "coming_soon", "active"];
+const PRODUCT_COLS = ["id", "shop_id", "code", "category", "kind", "name", "image", "mini_price_kg", "mini_weight_g", "piece_price_min", "piece_price_max", "sort", "coming_soon", "active"];
 
 const live = {
   // Gäste (ohne Login, nur über die guest_*-Funktionen)
@@ -111,7 +117,7 @@ const live = {
     ]);
     const ids = participants.map((p) => p.id);
     const items = ids.length
-      ? must(await sb.from("order_items").select("participant_id,order_id,product_id,qty,updated_at").in("participant_id", ids))
+      ? must(await sb.from("order_items").select("participant_id,order_id,product_id,variant,qty,updated_at").in("participant_id", ids))
       : [];
     return { participants, items, submissions };
   },
@@ -140,8 +146,8 @@ const live = {
 };
 
 // ───────── Demo (localStorage) ─────────
-const KEY = "paradiso-demo-v3";
-const PKEY = "paradiso-demo-products"; // im Admin geänderte/neue Produkte
+const KEY = "paradiso-demo-v4";
+const PKEY = "paradiso-demo-products-v2"; // im Admin geänderte/neue Produkte
 const read = () => JSON.parse(localStorage.getItem(KEY) || '{"projects":[],"orders":[],"participants":[],"items":[],"submissions":[]}');
 const write = (db) => localStorage.setItem(KEY, JSON.stringify(db));
 const uid = () => crypto.randomUUID();
@@ -189,28 +195,31 @@ const demo = {
   async guestItems(id, secret) {
     const db = read(); guestOf(db, id, secret);
     return {
-      items: db.items.filter((i) => i.participant_id === id).map(({ order_id, product_id, qty }) => ({ order_id, product_id, qty })),
+      items: db.items.filter((i) => i.participant_id === id).map(({ order_id, product_id, variant, qty }) => ({ order_id, product_id, variant, qty })),
       submitted_at: lastSubmit(db, id),
     };
   },
   async guestSubmit(id, secret, wanted) {
     const db = read(); const p = guestOf(db, id, secret);
     const open = new Set(ordersOf(db, p.project_id).filter((o) => !o.closed).map((o) => o.id));
-    const k = (i) => i.order_id + "|" + i.product_id;
+    const k = (i) => i.order_id + "|" + i.product_id + "|" + i.variant;
     const want = new Map(wanted.filter((i) => i.qty > 0 && open.has(i.order_id)).map((i) => [k(i), { ...i, qty: Math.min(i.qty, 500) }]));
     const cur = new Map(db.items.filter((i) => i.participant_id === id && open.has(i.order_id)).map((i) => [k(i), i]));
     const { products } = await loadCatalog({ all: true });
     for (const [key, w] of want) {
       const pr = products.find((x) => x.id === w.product_id);
+      if (!VARIANTS[w.variant]) throw new Error("Unbekannte Größe");
       if (!pr) throw new Error("Unbekanntes Produkt");
-      if ((pr.active === false || pr.coming_soon) && !(cur.get(key)?.qty >= w.qty)) throw new Error("Nicht bestellbar: " + pr.name);
+      const offered = variantsOf(pr).includes(w.variant);
+      if ((pr.active === false || pr.coming_soon || !offered) && !(cur.get(key)?.qty >= w.qty)) throw new Error("Nicht bestellbar: " + pr.name);
     }
-    const changes = [...new Set([...want.keys(), ...cur.keys()])].sort()
-      .map((key) => ({ order_id: key.split("|")[0], product_id: key.split("|")[1], old: cur.get(key)?.qty || 0, new: want.get(key)?.qty || 0 }))
-      .filter((c) => c.old !== c.new);
+    const changes = [...new Set([...want.keys(), ...cur.keys()])].sort().map((key) => {
+      const [order_id, product_id, variant] = key.split("|");
+      return { order_id, product_id, variant, old: cur.get(key)?.qty || 0, new: want.get(key)?.qty || 0 };
+    }).filter((c) => c.old !== c.new);
     if (changes.length) {
       db.items = db.items.filter((i) => !(i.participant_id === id && open.has(i.order_id)))
-        .concat([...want.values()].map((w) => ({ participant_id: id, order_id: w.order_id, product_id: w.product_id, qty: w.qty, updated_at: now() })));
+        .concat([...want.values()].map((w) => ({ participant_id: id, order_id: w.order_id, product_id: w.product_id, variant: w.variant, qty: w.qty, updated_at: now() })));
       db.submissions.push({ id: db.submissions.length + 1, project_id: p.project_id, participant_id: id, name: p.name, changes, created_at: now() });
       write(db);
     }

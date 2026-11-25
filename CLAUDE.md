@@ -20,9 +20,10 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 - `supabase/schema.sql`: Tabellen admins, shops, products, projects, orders, participants, order_items, submissions (Verlauf); explizite GRANTs + RLS; Produkte/Bilder nur für `is_admin()`; Gäste nur über security-definer-RPCs `guest_project/guest_join/guest_items/guest_submit` (id + secret). Syntax lässt sich mit `pglast` prüfen (kein lokales Postgres).
 - Bilder: `docs/img/paradiso/*.jpg` (aus Thekenfotos zugeschnitten, Platzhalterqualität)
 
-## Preise (Schätzungen, Chef konnte keine genauen nennen)
-- Alle Minis (herzhaft + süß): 18 €/kg. Stückgewicht geschätzt: herzhaft 45 g, süß 30 g, Kekse 12 g
-- Cornetti/Teilchen (nicht Mini): ca. 3–6 €/Stück
+## Preise & Größen (Schätzungen, Chef konnte keine genauen nennen)
+- Zwei Größen: **Mini** = nach Gewicht 18 €/kg (Stückgewicht geschätzt: herzhaft 45 g, süß 30 g, Kekse 12 g); **Normal** = pro Stück, NICHT proportional zum kg-Preis (z. B. Calzone ~5,50 €)
+- Herzhaftes + Cannoli/Törtchen: Mini + Normal (3–6 €); Cornetti & Teilchen: nur Normal (3–6 €); Gebäck & Kekse: nur Mini
+- DB: products.mini_price_kg/mini_weight_g + piece_price_min/max (null = Größe gibt es nicht); order_items.variant 'mini'|'stk'
 - Kosten sieht nur der Admin
 
 ## Offene Punkte

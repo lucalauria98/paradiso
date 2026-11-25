@@ -10,7 +10,7 @@ root = pathlib.Path(__file__).parent.parent
 c = json.load(open(root / 'docs/catalog.json'))
 overwrite = '--overwrite' in sys.argv
 q = lambda v: 'null' if v is None else ("'" + str(v).replace("'", "''") + "'" if isinstance(v, str) else ('true' if v is True else 'false' if v is False else str(v)))
-cols = ['id', 'shop', 'code', 'category', 'kind', 'name', 'image', 'unit', 'price_min', 'price_max', 'est_weight_g', 'sort', 'coming_soon']
+cols = ['id', 'shop', 'code', 'category', 'kind', 'name', 'image', 'mini_price_kg', 'mini_weight_g', 'piece_price_min', 'piece_price_max', 'sort', 'coming_soon']
 dbcols = ['shop_id' if k == 'shop' else k for k in cols]
 L = ['-- Produkte (generiert aus docs/catalog.json mit tools/gen_seed.py).',
      '-- ' + ('Überschreibt alle Produkte mit dem Stand aus catalog.json!' if overwrite

@@ -36,19 +36,18 @@ create table if not exists products (
   code          text,                          -- z. B. 'V1-1.1' (Vitrine/Reihe)
   category      text not null,
   name          text not null,
+  kind          text not null default 'suess' check (kind in ('herzhaft','suess')),
   image         text,                          -- relativer Pfad auf GitHub Pages oder Storage-URL
-  unit          text not null check (unit in ('kg','stk')),
-  price_min     numeric(6,2) not null,         -- €/kg bzw. €/Stück
-  price_max     numeric(6,2) not null,
-  est_weight_g  int,                           -- geschätztes Gewicht pro Stück (nur unit='kg')
+  -- Zwei mögliche Größen: Mini (nach Gewicht) und Normal (pro Stück). null = Größe gibt es nicht.
+  mini_price_kg   numeric(6,2),                -- Mini: € pro kg
+  mini_weight_g   int,                         -- Mini: geschätztes Gewicht pro Stück
+  piece_price_min numeric(6,2),                -- Normal: € pro Stück von …
+  piece_price_max numeric(6,2),                --                    … bis
   sort          int not null default 0,
   coming_soon   boolean not null default false,
-  active        boolean not null default true
+  active        boolean not null default true,
+  constraint products_variant_check check (mini_price_kg is not null or piece_price_min is not null)
 );
-alter table products add column if not exists kind text not null default 'suess';  -- 'herzhaft' | 'suess'
-do $$ begin
-  alter table products add constraint products_kind_check check (kind in ('herzhaft','suess'));
-exception when duplicate_object then null; end $$;
 
 -- ───────────── Projekte & Bestellungen ─────────────
 create table if not exists projects (
@@ -56,9 +55,9 @@ create table if not exists projects (
   title       text not null,
   invite_code text not null unique default encode(gen_random_bytes(6),'hex'),
   admin_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  note        text,                            -- Hinweis für Gäste
   created_at  timestamptz not null default now()
 );
-alter table projects add column if not exists note text;   -- Hinweis für Gäste
 
 create table if not exists orders (
   id          uuid primary key default gen_random_uuid(),
@@ -77,17 +76,18 @@ create table if not exists participants (
   created_at timestamptz not null default now()
 );
 
--- Abgeschickter Stand je Gast, Bestellung und Produkt
+-- Abgeschickter Stand je Gast, Bestellung, Produkt und Größe
 create table if not exists order_items (
   participant_id uuid not null references participants(id) on delete cascade,
   order_id       uuid not null references orders(id) on delete cascade,
   product_id     text not null references products(id),
+  variant        text not null check (variant in ('mini','stk')),   -- Mini oder Normal (Stück)
   qty            int  not null check (qty > 0 and qty <= 500),
   updated_at     timestamptz not null default now(),
-  primary key (participant_id, order_id, product_id)
+  primary key (participant_id, order_id, product_id, variant)
 );
 
--- Verlauf: jedes Abschicken mit Änderungen, changes = [{order_id, product_id, old, new}]
+-- Verlauf: jedes Abschicken mit Änderungen, changes = [{order_id, product_id, variant, old, new}]
 create table if not exists submissions (
   id             bigint generated always as identity primary key,
   project_id     uuid not null references projects(id) on delete cascade,
@@ -195,19 +195,19 @@ returns uuid language sql security definer set search_path = public as $$
   select p.project_id from participants p where p.id = p_id and p.secret = p_secret;
 $$;
 
--- Eigener abgeschickter Stand: {items: [{order_id, product_id, qty}], submitted_at}
+-- Eigener abgeschickter Stand: {items: [{order_id, product_id, variant, qty}], submitted_at}
 create or replace function guest_items(p_id uuid, p_secret uuid)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if _guest_check(p_id, p_secret) is null then raise exception 'Nicht berechtigt'; end if;
   return jsonb_build_object(
-    'items', coalesce((select jsonb_agg(jsonb_build_object('order_id', i.order_id, 'product_id', i.product_id, 'qty', i.qty))
+    'items', coalesce((select jsonb_agg(jsonb_build_object('order_id', i.order_id, 'product_id', i.product_id, 'variant', i.variant, 'qty', i.qty))
                        from order_items i where i.participant_id = p_id), '[]'::jsonb),
     'submitted_at', (select max(s.created_at) from submissions s where s.participant_id = p_id));
 end $$;
 
--- Auswahl abschicken: p_items = [{order_id, product_id, qty}] = gesamter gewünschter Stand.
+-- Auswahl abschicken: p_items = [{order_id, product_id, variant, qty}] = gesamter gewünschter Stand.
 -- Ersetzt den Stand in allen OFFENEN Bestellungen des Projekts, schreibt Änderungen in den Verlauf
 -- und liefert {changes, submitted_at}. Geschlossene Bestellungen bleiben unberührt.
 create or replace function guest_submit(p_id uuid, p_secret uuid, p_items jsonb)
@@ -220,38 +220,47 @@ begin
 
   drop table if exists _want, _cur;
   create temp table _want on commit drop as
-    select (x->>'order_id')::uuid as order_id, x->>'product_id' as product_id, least(max((x->>'qty')::int), 500) as qty
+    select (x->>'order_id')::uuid as order_id, x->>'product_id' as product_id, x->>'variant' as variant,
+           least(max((x->>'qty')::int), 500) as qty
     from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) x
     where (x->>'qty')::int > 0
       and (x->>'order_id')::uuid in (select id from orders where project_id = v_project and not closed)
-    group by 1, 2;
+    group by 1, 2, 3;
   create temp table _cur on commit drop as
-    select i.order_id, i.product_id, i.qty from order_items i
+    select i.order_id, i.product_id, i.variant, i.qty from order_items i
     where i.participant_id = p_id
       and i.order_id in (select id from orders where project_id = v_project and not closed);
 
-  -- Neu gewählte oder erhöhte Produkte müssen bestellbar sein
-  select pr.name into v_bad from _want w join products pr on pr.id = w.product_id
-    left join _cur c on c.order_id = w.order_id and c.product_id = w.product_id
-    where (not pr.active or pr.coming_soon) and (c.qty is null or w.qty > c.qty) limit 1;
-  if v_bad is not null then raise exception 'Nicht bestellbar: %', v_bad; end if;
+  if exists (select 1 from _want w where w.variant is null or w.variant not in ('mini','stk')) then
+    raise exception 'Unbekannte Größe';
+  end if;
   if exists (select 1 from _want w where not exists (select 1 from products pr where pr.id = w.product_id)) then
     raise exception 'Unbekanntes Produkt';
   end if;
+  -- Neu gewählte oder erhöhte Produkte müssen in dieser Größe bestellbar sein
+  select pr.name into v_bad from _want w join products pr on pr.id = w.product_id
+    left join _cur c on c.order_id = w.order_id and c.product_id = w.product_id and c.variant = w.variant
+    where (not pr.active or pr.coming_soon
+           or (w.variant = 'mini' and pr.mini_price_kg is null)
+           or (w.variant = 'stk' and pr.piece_price_min is null))
+      and (c.qty is null or w.qty > c.qty) limit 1;
+  if v_bad is not null then raise exception 'Nicht bestellbar: %', v_bad; end if;
 
-  select coalesce(jsonb_agg(jsonb_build_object('order_id', d.order_id, 'product_id', d.product_id, 'old', d.old_qty, 'new', d.new_qty)
-                            order by d.order_id, d.product_id), '[]'::jsonb)
+  select coalesce(jsonb_agg(jsonb_build_object('order_id', d.order_id, 'product_id', d.product_id, 'variant', d.variant,
+                                               'old', d.old_qty, 'new', d.new_qty)
+                            order by d.order_id, d.product_id, d.variant), '[]'::jsonb)
     into v_changes
     from (select coalesce(w.order_id, c.order_id) as order_id, coalesce(w.product_id, c.product_id) as product_id,
-                 coalesce(c.qty, 0) as old_qty, coalesce(w.qty, 0) as new_qty
-          from _want w full join _cur c on c.order_id = w.order_id and c.product_id = w.product_id
+                 coalesce(w.variant, c.variant) as variant, coalesce(c.qty, 0) as old_qty, coalesce(w.qty, 0) as new_qty
+          from _want w full join _cur c
+            on c.order_id = w.order_id and c.product_id = w.product_id and c.variant = w.variant
           where c.qty is distinct from w.qty) d;
 
   if v_changes <> '[]'::jsonb then
     delete from order_items i using _cur c
-      where i.participant_id = p_id and i.order_id = c.order_id and i.product_id = c.product_id;
-    insert into order_items (participant_id, order_id, product_id, qty, updated_at)
-      select p_id, w.order_id, w.product_id, w.qty, now() from _want w;
+      where i.participant_id = p_id and i.order_id = c.order_id and i.product_id = c.product_id and i.variant = c.variant;
+    insert into order_items (participant_id, order_id, product_id, variant, qty, updated_at)
+      select p_id, w.order_id, w.product_id, w.variant, w.qty, now() from _want w;
     insert into submissions (project_id, participant_id, name, changes) values (v_project, p_id, v_name, v_changes);
   end if;
 

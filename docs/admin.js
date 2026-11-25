@@ -1,4 +1,4 @@
-import { api, DEMO, loadCatalog, esc, lineCost, lineWeight, fmtRange, fmtKg, priceLabel, fmtPickup, fmtWhen } from "./api.js";
+import { api, DEMO, loadCatalog, esc, lineCost, lineWeight, fmtRange, fmtKg, priceLabel, fmtPickup, fmtWhen, variantsOf, VARIANTS, withVariant } from "./api.js";
 import { productTabs, inTab, chipsHtml, sectionsHtml, piecePrice, infoHtml } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -196,18 +196,19 @@ const itemsOf = (s) => (s === ALL ? data.items : data.items.filter((i) => i.orde
 const multiShop = () => new Set(catalog.products.map((p) => p.shop)).size > 1;
 const lastSubmit = (pid) => data.submissions.find((s) => s.participant_id === pid)?.created_at; // neueste zuerst
 
-// Summen je Produkt
+// Summen je Produkt und Größe
 function totals(items) {
   const m = new Map();
   for (const i of items) {
     const p = prod(i.product_id); if (!p) continue;
-    const t = m.get(p.id) || { p, qty: 0, people: new Map() };
+    const k = p.id + "|" + i.variant;
+    const t = m.get(k) || { p, v: i.variant, qty: 0, people: new Map() };
     t.qty += i.qty;
     const name = data.participants.find((x) => x.id === i.participant_id)?.name || "?";
     t.people.set(name, (t.people.get(name) || 0) + i.qty);
-    m.set(p.id, t);
+    m.set(k, t);
   }
-  return [...m.values()].sort((a, b) => a.p.sort - b.p.sort);
+  return [...m.values()].sort((a, b) => a.p.sort - b.p.sort || (a.v === "mini" ? -1 : 1));
 }
 
 function render() {
@@ -233,7 +234,7 @@ function render() {
   const items = itemsOf(sel);
   const rows = totals(items);
   let cost = [0, 0], weight = 0, pieces = 0;
-  rows.forEach((r) => { cost = add(cost, lineCost(r.p, r.qty)); weight += lineWeight(r.p, r.qty); pieces += r.qty; });
+  rows.forEach((r) => { cost = add(cost, lineCost(r.p, r.qty, r.v)); weight += lineWeight(r.p, r.qty, r.v); pieces += r.qty; });
   const active = new Set(items.map((i) => i.participant_id)).size;
   const sent = data.participants.filter((p) => lastSubmit(p.id)).length;
   $("stats").innerHTML = `
@@ -266,9 +267,9 @@ function renderByProduct(rows) {
     if (!list.length) return "";
     let sub = [0, 0], subW = 0;
     const tr = list.map((r) => {
-      const c = lineCost(r.p, r.qty), w = lineWeight(r.p, r.qty); sub = add(sub, c); subW += w;
+      const c = lineCost(r.p, r.qty, r.v), w = lineWeight(r.p, r.qty, r.v); sub = add(sub, c); subW += w;
       return `<tr><td>${r.p.image ? `<img src="${esc(r.p.image)}" alt="">` : ""}</td>
-        <td><b>${esc(r.p.name)}</b><br><span class="cat-note">${r.p.code ? esc(r.p.code) + " · " : ""}${esc(priceLabel(r.p))}</span><br>
+        <td><b>${esc(withVariant(r.p, r.v))}</b><br><span class="cat-note">${r.p.code ? esc(r.p.code) + " · " : ""}${esc(priceLabel(r.p, r.v))}</span><br>
         <span class="cat-note">${[...r.people].map(([n, q]) => `${esc(n)} ${q}`).join(", ")}</span></td>
         <td class="num"><b>${r.qty}</b> Stk${w ? `<br><span class="cat-note">≈ ${fmtKg(w)}</span>` : ""}</td>
         <td class="num">${fmtRange(c)}</td></tr>`;
@@ -285,13 +286,13 @@ function renderByPerson(items) {
   $("byPerson").innerHTML = data.participants.map((pp) => {
     const its = items.filter((i) => i.participant_id === pp.id).map((i) => ({ ...i, p: prod(i.product_id) })).filter((x) => x.p)
       .sort((a, b) => project.orders.findIndex((o) => o.id === a.order_id) - project.orders.findIndex((o) => o.id === b.order_id) || a.p.sort - b.p.sort);
-    const c = its.reduce((s, x) => add(s, lineCost(x.p, x.qty)), [0, 0]);
+    const c = its.reduce((s, x) => add(s, lineCost(x.p, x.qty, x.variant)), [0, 0]);
     const when = lastSubmit(pp.id);
     return `<div class="person"><div class="person-head"><span><b>${esc(pp.name)}</b>
       <span class="cat-note">${when ? `abgeschickt ${fmtWhen(when)}` : "noch nicht abgeschickt"}</span></span>
       <span>${its.length ? fmtRange(c) : '<span class="cat-note">nichts gewählt</span>'}
       <button class="x no-print" data-del="${pp.id}">entfernen</button></span></div>
-      ${its.length ? `<ul>${its.map((x) => `<li>${x.qty}× ${esc(x.p.name)}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}</li>`).join("")}</ul>` : ""}</div>`;
+      ${its.length ? `<ul>${its.map((x) => `<li>${x.qty}× ${esc(withVariant(x.p, x.variant))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}</li>`).join("")}</ul>` : ""}</div>`;
   }).join("");
   $("byPerson").onclick = async (e) => {
     const b = e.target.closest("[data-del]"); if (!b) return;
@@ -307,7 +308,8 @@ function renderLog() {
     .filter((s) => s.changes.length);
   if (!entries.length) { $("byLog").innerHTML = `<div class="empty">Noch nichts abgeschickt.</div>`; return; }
   const line = (c) => {
-    const name = esc(prod(c.product_id)?.name || c.product_id);
+    const p = prod(c.product_id);
+    const name = esc(p ? withVariant(p, c.variant || variantsOf(p)[0]) : c.product_id);
     const where = sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "gelöschte Bestellung")})</span>` : "";
     if (!c.old) return `<li class="plus">+ ${c.new}× ${name}${where}</li>`;
     if (!c.new) return `<li class="minus">− ${name} <span class="cat-note">(war ${c.old})</span>${where}</li>`;
@@ -328,8 +330,8 @@ function orderText(o) {
   return head.concat("", catalog.shops.flatMap((s) => {
     const list = rows.filter((r) => r.p.shop === s.id);
     if (!list.length) return [];
-    const w = list.reduce((a, r) => a + lineWeight(r.p, r.qty), 0);
-    return [`== ${s.name} ==`, ...list.map((r) => `${r.qty}× ${r.p.name}${r.p.code ? ` [${r.p.code}]` : ""}`),
+    const w = list.reduce((a, r) => a + lineWeight(r.p, r.qty, r.v), 0);
+    return [`== ${s.name} ==`, ...list.map((r) => `${r.qty}× ${withVariant(r.p, r.v)}${r.p.code ? ` [${r.p.code}]` : ""}`),
       w ? `(Minis gesamt ca. ${fmtKg(w)})` : "", ""];
   })).join("\n").trim();
 }
@@ -354,7 +356,7 @@ function renderProducts() {
         ${p.code ? `<span class="code">${esc(p.code)}</span>` : ""}
         ${!p.active ? `<span class="flag">Ausgeblendet</span>` : p.coming_soon ? `<span class="flag soon-flag">Bald dabei</span>` : ""}</div>
       <div class="body"><div class="name">${esc(p.name)}</div>
-        <div class="price">${piecePrice(p)} <span class="cat-note">· ${esc(priceLabel(p))}</span></div>
+        ${variantsOf(p).map((v) => `<div class="price">${variantsOf(p).length > 1 ? `<b>${VARIANTS[v]}</b> ` : ""}${piecePrice(p, v)} <span class="cat-note">· ${esc(priceLabel(p, v))}</span></div>`).join("")}
         <div class="foot"><span class="edit">Bearbeiten</span></div></div></article>`);
 }
 $("pTabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b) { pTab = b.dataset.tab; renderProducts(); } };
@@ -366,7 +368,7 @@ $("newProduct").onclick = () => {
 
 function openProduct(p, defaults = {}) {
   pEdit = p; pFile = null;
-  const d = p || { shop: defaults.shop, kind: defaults.kind, unit: "kg", price_min: 18, price_max: 18, est_weight_g: 30, active: true, coming_soon: false };
+  const d = p || { shop: defaults.shop, kind: defaults.kind, mini_price_kg: 18, mini_weight_g: 30, piece_price_min: 3, piece_price_max: 6, active: true, coming_soon: false };
   $("pmTitle").textContent = p ? "Produkt bearbeiten" : "Neues Produkt";
   $("pmShop").innerHTML = catalog.shops.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
   $("pmCats").innerHTML = [...new Set(catalog.products.map((x) => x.category))].map((c) => `<option value="${esc(c)}">`).join("");
@@ -374,9 +376,12 @@ function openProduct(p, defaults = {}) {
   $("pmShop").value = d.shop;
   $("pmKind").value = d.kind || "suess";
   $("pmCat").value = d.category || "";
-  $("pmUnit").value = d.unit;
-  $("pmWeight").value = d.est_weight_g ?? "";
-  $("pmPmin").value = d.price_min; $("pmPmax").value = d.price_max;
+  $("pmMini").checked = d.mini_price_kg != null;
+  $("pmKg").value = d.mini_price_kg ?? 18;
+  $("pmWeight").value = d.mini_weight_g ?? 30;
+  $("pmPiece").checked = d.piece_price_min != null;
+  $("pmPmin").value = d.piece_price_min ?? 3;
+  $("pmPmax").value = d.piece_price_max ?? d.piece_price_min ?? 6;
   $("pmStatus").value = !d.active ? "hidden" : d.coming_soon ? "soon" : "active";
   $("pmCode").value = d.code || "";
   setPreview(d.image);
@@ -388,17 +393,28 @@ function setPreview(src) {
   $("pmImg").classList.toggle("hidden", !src); $("pmNoImg").classList.toggle("hidden", !!src);
   if (src) $("pmImg").src = src;
 }
-function pmUpdate() {
-  const kg = $("pmUnit").value === "kg";
-  $("pmWeightL").classList.toggle("hidden", !kg);
-  $("pmWeight").required = kg;
-  $("pmPminL").textContent = kg ? "€ pro kg (ab)" : "€ pro Stück (ab)";
-  $("pmPmaxL").textContent = kg ? "€ pro kg (bis)" : "€ pro Stück (bis)";
-  const p = { unit: $("pmUnit").value, price_min: +$("pmPmin").value, price_max: +$("pmPmax").value || +$("pmPmin").value, est_weight_g: +$("pmWeight").value };
-  const pp = piecePrice(p);
-  $("pmHint").textContent = pp ? `Gäste sehen: ${pp} pro Stück` : "";
+// Preise aus dem Formular (null = Größe gibt es nicht)
+function pmPrices() {
+  const mini = $("pmMini").checked, piece = $("pmPiece").checked;
+  const pmin = +$("pmPmin").value;
+  return {
+    mini_price_kg: mini ? +$("pmKg").value : null, mini_weight_g: mini ? Math.round(+$("pmWeight").value) : null,
+    piece_price_min: piece ? pmin : null, piece_price_max: piece ? (+$("pmPmax").value || pmin) : null,
+  };
 }
-["pmUnit", "pmPmin", "pmPmax", "pmWeight"].forEach((id) => { $(id).oninput = pmUpdate; });
+function pmUpdate() {
+  for (const [box, fields] of [["pmMini", "pmMiniFields"], ["pmPiece", "pmPieceFields"]]) {
+    $(fields).classList.toggle("hidden", !$(box).checked);
+    $(fields).querySelectorAll("input").forEach((x) => { x.required = $(box).checked; });
+  }
+  const p = pmPrices();
+  const vs = variantsOf(p);
+  $("pmHint").textContent = vs.length
+    ? "Gäste sehen: " + vs.map((v) => `${vs.length > 1 ? VARIANTS[v] + " " : ""}${piecePrice(p, v)}`).join(" · ") + " pro Stück"
+    : "Mindestens eine Größe auswählen.";
+}
+["pmMini", "pmPiece"].forEach((id) => { $(id).onchange = pmUpdate; });
+["pmKg", "pmWeight", "pmPmin", "pmPmax"].forEach((id) => { $(id).oninput = pmUpdate; });
 $("pmFile").onchange = () => {
   pFile = $("pmFile").files[0] || null;
   if (pFile) setPreview(URL.createObjectURL(pFile));
@@ -413,17 +429,16 @@ $("pmForm").onsubmit = async (e) => {
   $("pmError").textContent = "";
   $("pmSave").disabled = true; $("pmSave").textContent = "Speichert …";
   try {
-    const kg = $("pmUnit").value === "kg";
-    const pmin = +$("pmPmin").value, pmax = +$("pmPmax").value || pmin;
-    if (pmax < pmin) throw new Error("„Preis bis“ ist kleiner als „Preis ab“.");
+    const prices = pmPrices();
+    if (!variantsOf(prices).length) throw new Error("Mindestens eine Größe (Mini oder Normal) auswählen.");
+    if (prices.piece_price_max != null && prices.piece_price_max < prices.piece_price_min) throw new Error("„bis“ ist kleiner als „von“.");
     let id = pEdit?.id;
     if (!id) { id = slug($("pmName").value); while (prod(id)) id += "-2"; }
     const image = pFile ? await api.uploadImage(await shrink(pFile)) : pEdit?.image ?? null;
     const status = $("pmStatus").value;
     await api.saveProduct({
       id, shop: $("pmShop").value, kind: $("pmKind").value, category: $("pmCat").value.trim(),
-      name: $("pmName").value.trim(), code: $("pmCode").value.trim() || null, image,
-      unit: $("pmUnit").value, price_min: pmin, price_max: pmax, est_weight_g: kg ? Math.round(+$("pmWeight").value) : null,
+      name: $("pmName").value.trim(), code: $("pmCode").value.trim() || null, image, ...prices,
       sort: pEdit?.sort ?? Math.max(0, ...catalog.products.map((x) => x.sort)) + 1,
       active: status !== "hidden", coming_soon: status === "soon",
     });
