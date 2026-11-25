@@ -88,8 +88,9 @@ Gäste greifen nie direkt auf Tabellen zu, nur über die Funktionen `guest_*` (g
   Bestellliste und Kostenschätzung nutzen diese Mengen.
 - **Vegetarisch:** Haken „🌱 Vegetarisch“ im Editor → grünes Label + Gäste-Filter „Nur vegetarisch“. Produkte, die es in
   beiden Varianten gibt, stehen doppelt im Katalog („– vegetarisch“ / „– mit Fleisch“).
-- **Anmerkungen:** Gäste können pro Bestellung eine Notiz mitschicken. Du siehst sie in der Bestellplanung und hakst an,
-  welche als „Hinweise“ in die Bestellliste für den Laden sollen.
+- **Notizen:** Gäste können zu jedem gewählten Produkt eine Notiz schreiben (📝 auf der Karte, z. B. „mit Bio-Rindhack“)
+  und eine Anmerkung zur ganzen Bestellung. Du siehst sie in der Bestellplanung und hakst an, welche an den Laden gehen –
+  Produkt-Notizen stehen dann direkt unter dem Produkt, Anmerkungen unter „Hinweise“.
 - Bekannte Preise: herzhafte Minis **18 €/kg**, herzhaft normal **ca. 3–6 €/Stück**. Süßes: Preis folgt.
 
 ## Antipasti-Laden ergänzen

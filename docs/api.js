@@ -127,13 +127,14 @@ const live = {
     const ids = participants.map((p) => p.id);
     const [items, notes] = ids.length ? await Promise.all([
       sb.from("order_items").select("participant_id,order_id,product_id,variant,qty,updated_at").in("participant_id", ids).then(must),
-      sb.from("order_notes").select("participant_id,order_id,note,forward,updated_at").in("participant_id", ids).then(must),
+      sb.from("order_notes").select("participant_id,order_id,product_id,note,forward,updated_at").in("participant_id", ids).then(must),
     ]) : [[], []];
     return { participants, items, notes, submissions, plans: plans.map(({ orders, ...r }) => r) };
   },
-  // Anmerkung an den Laden weitergeben (steht dann in der Bestellliste)
-  async setNoteForward(participantId, orderId, forward) {
-    must(await (await table("order_notes")).update({ forward }).eq("participant_id", participantId).eq("order_id", orderId));
+  // Notiz an den Laden weitergeben (steht dann in der Bestellliste); productId '' = ganze Bestellung
+  async setNoteForward(participantId, orderId, productId, forward) {
+    must(await (await table("order_notes")).update({ forward })
+      .eq("participant_id", participantId).eq("order_id", orderId).eq("product_id", productId));
   },
   // Bestellmenge festlegen (Mini: Gramm, Normal: Stück); amount = null → zurück zum Vorschlag
   async setPlan(orderId, productId, variant, amount) {
@@ -166,7 +167,7 @@ const live = {
 };
 
 // ───────── Demo (localStorage) ─────────
-const KEY = "paradiso-demo-v6";
+const KEY = "paradiso-demo-v7";
 const PKEY = "paradiso-demo-products-v4"; // im Admin geänderte/neue Produkte
 const read = () => JSON.parse(localStorage.getItem(KEY) || '{"projects":[],"orders":[],"participants":[],"items":[],"submissions":[],"plans":[],"notes":[]}');
 const write = (db) => localStorage.setItem(KEY, JSON.stringify(db));
@@ -216,7 +217,7 @@ const demo = {
     const db = read(); guestOf(db, id, secret);
     return {
       items: db.items.filter((i) => i.participant_id === id).map(({ order_id, product_id, variant, qty }) => ({ order_id, product_id, variant, qty })),
-      notes: db.notes.filter((n) => n.participant_id === id).map(({ order_id, note }) => ({ order_id, note })),
+      notes: db.notes.filter((n) => n.participant_id === id).map(({ order_id, product_id, note }) => ({ order_id, product_id, note })),
       submitted_at: lastSubmit(db, id),
     };
   },
@@ -238,14 +239,20 @@ const demo = {
       const [order_id, product_id, variant] = key.split("|");
       return { order_id, product_id, variant, old: cur.get(key)?.qty || 0, new: want.get(key)?.qty || 0 };
     }).filter((c) => c.old !== c.new);
-    // Anmerkungen: leer = löschen, Änderung setzt „weitergeben“ zurück
-    for (const n of notes.filter((n) => open.has(n.order_id))) {
-      const note = (n.note || "").trim().slice(0, 500) || null;
-      const cur = db.notes.find((x) => x.participant_id === id && x.order_id === n.order_id);
-      if ((cur?.note ?? null) === note) continue;
-      db.notes = db.notes.filter((x) => x !== cur);
-      if (note) db.notes.push({ participant_id: id, order_id: n.order_id, note, forward: false, updated_at: now() });
-      changes.push({ order_id: n.order_id, type: "note", note: note || "" });
+    // Notizen = vollständiger Wunschstand (fehlende werden gelöscht); Produkt-Notizen nur für gewählte Produkte.
+    // Änderung setzt „weitergeben“ zurück.
+    const nk = (n) => n.order_id + "|" + (n.product_id || "");
+    const nwant = new Map(notes.map((n) => ({ ...n, product_id: n.product_id || "", note: (n.note || "").trim().slice(0, 500) }))
+      .filter((n) => n.note && open.has(n.order_id) && (!n.product_id || [...want.values()].some((w) => w.order_id === n.order_id && w.product_id === n.product_id)))
+      .map((n) => [nk(n), n]));
+    const ncur = new Map(db.notes.filter((x) => x.participant_id === id && open.has(x.order_id)).map((x) => [nk(x), x]));
+    for (const k2 of new Set([...nwant.keys(), ...ncur.keys()])) {
+      const w = nwant.get(k2), c = ncur.get(k2);
+      if ((w?.note ?? null) === (c?.note ?? null)) continue;
+      db.notes = db.notes.filter((x) => x !== c);
+      if (w) db.notes.push({ participant_id: id, order_id: w.order_id, product_id: w.product_id, note: w.note, forward: false, updated_at: now() });
+      const [order_id, product_id] = k2.split("|");
+      changes.push({ order_id, product_id, type: "note", note: w?.note || "" });
     }
     if (changes.some((c) => c.type !== "note")) {
       db.items = db.items.filter((i) => !(i.participant_id === id && open.has(i.order_id)))
@@ -290,8 +297,8 @@ const demo = {
       plans: db.plans.filter((x) => db.orders.some((o) => o.id === x.order_id && o.project_id === projectId)),
     };
   },
-  async setNoteForward(participantId, orderId, forward) {
-    const db = read(); const n = db.notes.find((x) => x.participant_id === participantId && x.order_id === orderId);
+  async setNoteForward(participantId, orderId, productId, forward) {
+    const db = read(); const n = db.notes.find((x) => x.participant_id === participantId && x.order_id === orderId && (x.product_id || "") === productId);
     if (n) n.forward = forward; write(db);
   },
   async setPlan(orderId, productId, variant, amount) {

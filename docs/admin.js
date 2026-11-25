@@ -333,19 +333,22 @@ function renderByProduct(o) {
   const unit = (v) => (v === "mini" ? "g" : "Stk");
   const amountHtml = (l, attr) => `<input class="amt" type="number" min="0" step="${l.type === "mix" || l.v === "mini" ? 100 : 1}" inputmode="numeric" value="${l.amount}" ${attr}>
     ${l.type === "mix" ? "g" : unit(l.v)}${l.adjusted ? `<br><button class="link-btn reset" ${attr.replace("data-plan", "data-reset").replace("data-mixamt", "data-mixreset")}>↺ Vorschlag ${l.type === "mix" || l.v === "mini" ? fmtKg(l.suggested) : l.suggested + " Stk"}</button>` : ""}`;
+  const shown = new Set();
+  const pnotes = (pids, named = false) => pids.filter((pid) => !shown.has(pid) && shown.add(pid))
+    .flatMap((pid) => pNotesOf(o.id, pid).map((n) => noteLine(n, named ? ` (${esc(prod(pid)?.name || "")})` : ""))).join("");
   $("byProduct").innerHTML = mixBar + catalog.shops.map((s) => {
     const list = lines.filter((l) => l.shop === s.id);
     if (!list.length) return "";
     const sum = sumPlan(list);
     const tr = list.map((l) => l.type === "mix"
       ? `<tr class="mix"><td></td>
-          <td><b>${esc(l.category)} – Minis gemischt</b><br><span class="cat-note">Wünsche: ${l.rows.map((r) => `${r.qty}× ${esc(r.p.name)}`).join(", ")}</span></td>
+          <td><b>${esc(l.category)} – Minis gemischt</b><br><span class="cat-note">Wünsche: ${l.rows.map((r) => `${r.qty}× ${esc(r.p.name)}`).join(", ")}</span>${pnotes(l.rows.map((r) => r.p.id), true)}</td>
           <td class="num"><b>${l.qty}</b> Stk<br><span class="cat-note">≈ ${fmtKg(l.rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini"), 0))}</span></td>
           <td class="num plan">${amountHtml(l, `data-mixamt="${esc(l.category)}"`)}</td>
           <td class="num">${costHtml(l.cost)}</td></tr>`
       : `<tr><td>${l.p.image ? `<img src="${esc(l.p.image)}" alt="">` : ""}</td>
           <td><b>${esc(withVariant(l.p, l.v))}</b><br><span class="cat-note">${l.p.code ? esc(l.p.code) + " · " : ""}${esc(priceLabel(l.p, l.v))}</span><br>
-          <span class="cat-note">${people(l)}</span></td>
+          <span class="cat-note">${people(l)}</span>${pnotes([l.p.id])}</td>
           <td class="num"><b>${l.qty}</b> Stk${l.v === "mini" ? `<br><span class="cat-note">≈ ${fmtKg(lineWeight(l.p, l.qty, "mini"))}</span>` : ""}</td>
           <td class="num plan">${amountHtml(l, `data-plan="${l.p.id}|${l.v}"`)}</td>
           <td class="num">${costHtml(l.cost)}</td></tr>`).join("");
@@ -357,14 +360,17 @@ function renderByProduct(o) {
 
 // Anmerkungen der Gäste: Admin entscheidet, was an den Laden geht
 const nameOf = (pid) => data.participants.find((x) => x.id === pid)?.name || "?";
-const notesOf = (orderId) => (data.notes || []).filter((n) => n.order_id === orderId);
+// Notizen: product_id '' = zur ganzen Bestellung, sonst zu einem Produkt
+const notesOf = (orderId) => (data.notes || []).filter((n) => n.order_id === orderId && !n.product_id);
+const pNotesOf = (orderId, pid) => (data.notes || []).filter((n) => n.order_id === orderId && n.product_id === pid);
+const noteLine = (n, label = "") => `<label class="note-line"><input type="checkbox" class="no-print" data-fwd="${n.participant_id}|${n.product_id || ""}" ${n.forward ? "checked" : ""}>
+  <span>📝 <b>${esc(nameOf(n.participant_id))}${label}:</b> ${esc(n.note)}
+  <span class="cat-note">${n.forward ? "→ geht an den Laden" : "nur für dich"}</span></span></label>`;
 function notesHtml(o) {
   const notes = notesOf(o.id);
   if (!notes.length) return "";
-  return `<div class="notes-box"><h3 class="serif">Anmerkungen der Gäste</h3>
-    ${notes.map((n) => `<label class="note-line"><input type="checkbox" class="no-print" data-fwd="${n.participant_id}" ${n.forward ? "checked" : ""}>
-      <span><b>${esc(nameOf(n.participant_id))}:</b> ${esc(n.note)}
-      <span class="cat-note">${n.forward ? "→ steht in der Bestellliste" : "nur für dich"}</span></span></label>`).join("")}
+  return `<div class="notes-box"><h3 class="serif">Anmerkungen zur ganzen Bestellung</h3>
+    ${notes.map((n) => noteLine(n)).join("")}
     <p class="cat-note no-print" style="margin:6px 0 0">Haken = an den Laden weitergeben (erscheint als „Hinweise“ in der Bestellliste).</p></div>`;
 }
 
@@ -373,7 +379,8 @@ $("byProduct").onchange = async (e) => {
   const o = order(); if (!o) return;
   const t = e.target, val = Math.max(0, Math.round(+t.value || 0));
   if (t.dataset.fwd) {
-    await api.setNoteForward(t.dataset.fwd, o.id, t.checked);
+    const [pid, prodId] = t.dataset.fwd.split("|");
+    await api.setNoteForward(pid, o.id, prodId || "", t.checked);
     await refresh();
   } else if (t.dataset.plan) {
     const [pid, v] = t.dataset.plan.split("|");
@@ -430,9 +437,13 @@ function renderByPerson(items) {
       <span class="cat-note">${when ? `abgeschickt ${fmtWhen(when)}` : "noch nicht abgeschickt"}</span></span>
       <span>${its.length ? costTxt || '<span class="cat-note">Preis folgt</span>' : '<span class="cat-note">nichts gewählt</span>'}
       <button class="x no-print" data-del="${pp.id}">entfernen</button></span></div>
-      ${its.length ? `<ul>${its.map((x) => `<li>${x.qty}× ${esc(withVariant(x.p, x.variant))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}</li>`).join("")}</ul>` : ""}
-      ${(data.notes || []).filter((n) => n.participant_id === pp.id && (sel === ALL || n.order_id === sel))
-        .map((n) => `<p class="note-ro">📝 ${esc(n.note)}${sel === ALL ? ` <span class="cat-note">(${esc(order(n.order_id)?.title || "")})</span>` : ""}</p>`).join("")}</div>`;
+      ${its.length ? `<ul>${its.map((x, i) => {
+        const first = its.findIndex((y) => y.order_id === x.order_id && y.product_id === x.product_id) === i;
+        const pn = first ? pNotesOf(x.order_id, x.product_id).find((n) => n.participant_id === pp.id) : null;
+        return `<li>${x.qty}× ${esc(withVariant(x.p, x.variant))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}${pn ? `<br><span class="pnote-ro">📝 ${esc(pn.note)}</span>` : ""}</li>`;
+      }).join("")}</ul>` : ""}
+      ${(data.notes || []).filter((n) => n.participant_id === pp.id && !n.product_id && (sel === ALL || n.order_id === sel))
+        .map((n) => `<p class="note-ro">📝 Zur Bestellung: ${esc(n.note)}${sel === ALL ? ` <span class="cat-note">(${esc(order(n.order_id)?.title || "")})</span>` : ""}</p>`).join("")}</div>`;
   }).join("");
   $("byPerson").onclick = async (e) => {
     const b = e.target.closest("[data-del]"); if (!b) return;
@@ -448,7 +459,10 @@ function renderLog() {
     .filter((s) => s.changes.length);
   if (!entries.length) { $("byLog").innerHTML = `<div class="empty">Noch nichts abgeschickt.</div>`; return; }
   const line = (c) => {
-    if (c.type === "note") return `<li class="note-chg">📝 ${c.note ? `Anmerkung: „${esc(c.note)}“` : "Anmerkung gelöscht"}${sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "")})</span>` : ""}</li>`;
+    if (c.type === "note") {
+      const what = c.product_id ? `Notiz zu ${esc(prod(c.product_id)?.name || c.product_id)}` : "Anmerkung zur Bestellung";
+      return `<li class="note-chg">📝 ${what}${c.note ? `: „${esc(c.note)}“` : " gelöscht"}${sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "")})</span>` : ""}</li>`;
+    }
     const p = prod(c.product_id);
     const name = esc(p ? withVariant(p, c.variant || variantsOf(p)[0]) : c.product_id);
     const where = sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "gelöschte Bestellung")})</span>` : "";
@@ -467,6 +481,12 @@ const fwdNotes = (o) => {
   const n = notesOf(o.id).filter((x) => x.forward);
   return n.length ? ["Hinweise:", ...n.map((x) => `– ${nameOf(x.participant_id)}: ${x.note}`)] : [];
 };
+// weitergegebene Produkt-Notizen direkt unter das Produkt (nur einmal pro Produkt)
+const fwdProductNotes = (o, pid, done, withName = "") => {
+  if (done.has(pid)) return [];
+  done.add(pid);
+  return pNotesOf(o.id, pid).filter((x) => x.forward).map((x) => `   – ${nameOf(x.participant_id)}${withName}: ${x.note}`);
+};
 // Text zum Durchgeben/Schicken an den Laden – je Bestellung ein Block, mit den Bestellmengen
 function orderText(o) {
   const lines = planOf(o).filter((l) => l.amount > 0);
@@ -476,9 +496,12 @@ function orderText(o) {
     const list = lines.filter((l) => l.shop === s.id);
     if (!list.length) return [];
     const grams = sumPlan(list).grams;
+    const done = new Set();
     return [`== ${s.name} ==`, ...list.flatMap((l) => l.type === "mix"
-      ? [`${fmtKg(l.amount)} ${l.category} – Minis gemischt`, `   (gern u. a.: ${l.rows.map((r) => r.p.name).join(", ")})`]
-      : [`${l.v === "mini" ? fmtKg(l.amount) : l.amount + "×"} ${withVariant(l.p, l.v)}${l.p.code ? ` [${l.p.code}]` : ""}`]),
+      ? [`${fmtKg(l.amount)} ${l.category} – Minis gemischt`, `   (gern u. a.: ${l.rows.map((r) => r.p.name).join(", ")})`,
+         ...l.rows.flatMap((r) => fwdProductNotes(o, r.p.id, done, ` (${r.p.name})`))]
+      : [`${l.v === "mini" ? fmtKg(l.amount) : l.amount + "×"} ${withVariant(l.p, l.v)}${l.p.code ? ` [${l.p.code}]` : ""}`,
+         ...fwdProductNotes(o, l.p.id, done)]),
       grams ? `(Minis gesamt ca. ${fmtKg(grams)})` : "", ""];
   })).concat(fwdNotes(o)).join("\n").trim();
 }

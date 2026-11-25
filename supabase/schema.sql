@@ -106,15 +106,16 @@ create table if not exists order_plan (
   primary key (order_id, product_id, variant)
 );
 
--- Anmerkungen der Gäste je Bestellung (z. B. „Arancini bitte ohne Erbsen“).
+-- Notizen der Gäste: pro Produkt (z. B. Arancini „mit Bio-Rindhack“) oder zur ganzen Bestellung (product_id = '').
 -- forward = Admin gibt sie an den Laden weiter (steht dann in der Bestellliste); jede Änderung setzt es zurück.
 create table if not exists order_notes (
   participant_id uuid not null references participants(id) on delete cascade,
   order_id       uuid not null references orders(id) on delete cascade,
+  product_id     text not null default '',      -- '' = Anmerkung zur ganzen Bestellung
   note           text not null check (char_length(note) between 1 and 500),
   forward        boolean not null default false,
   updated_at     timestamptz not null default now(),
-  primary key (participant_id, order_id)
+  primary key (participant_id, order_id, product_id)
 );
 
 -- Verlauf: jedes Abschicken mit Änderungen, changes = [{order_id, product_id, variant, old, new} | {order_id, type:'note', note}]
@@ -237,7 +238,7 @@ returns uuid language sql security definer set search_path = public as $$
   select p.project_id from participants p where p.id = p_id and p.secret = p_secret;
 $$;
 
--- Eigener abgeschickter Stand: {items: [{order_id, product_id, variant, qty}], notes: [{order_id, note}], submitted_at}
+-- Eigener abgeschickter Stand: {items: [{order_id, product_id, variant, qty}], notes: [{order_id, product_id, note}], submitted_at}
 create or replace function guest_items(p_id uuid, p_secret uuid)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -246,13 +247,13 @@ begin
   return jsonb_build_object(
     'items', coalesce((select jsonb_agg(jsonb_build_object('order_id', i.order_id, 'product_id', i.product_id, 'variant', i.variant, 'qty', i.qty))
                        from order_items i where i.participant_id = p_id), '[]'::jsonb),
-    'notes', coalesce((select jsonb_agg(jsonb_build_object('order_id', n.order_id, 'note', n.note))
+    'notes', coalesce((select jsonb_agg(jsonb_build_object('order_id', n.order_id, 'product_id', n.product_id, 'note', n.note))
                        from order_notes n where n.participant_id = p_id), '[]'::jsonb),
     'submitted_at', (select max(s.created_at) from submissions s where s.participant_id = p_id));
 end $$;
 
 -- Auswahl abschicken: p_items = [{order_id, product_id, variant, qty}] = gesamter gewünschter Stand,
--- p_notes = [{order_id, note}] (leer = Anmerkung löschen).
+-- p_notes = [{order_id, product_id ('' = ganze Bestellung), note}] = alle gewünschten Notizen (fehlende werden gelöscht).
 -- Ersetzt den Stand in allen OFFENEN Bestellungen des Projekts, schreibt Änderungen in den Verlauf
 -- und liefert {changes, submitted_at}. Geschlossene Bestellungen bleiben unberührt.
 drop function if exists guest_submit(uuid, uuid, jsonb);   -- alte Version ohne Anmerkungen
@@ -264,7 +265,7 @@ begin
   select project_id, name into v_project, v_name from participants where id = p_id and secret = p_secret;
   if v_project is null then raise exception 'Nicht berechtigt'; end if;
 
-  drop table if exists _want, _cur, _nwant;
+  drop table if exists _want, _cur, _nwant, _ncur;
   create temp table _want on commit drop as
     select (x->>'order_id')::uuid as order_id, x->>'product_id' as product_id, x->>'variant' as variant,
            least(max((x->>'qty')::int), 500) as qty
@@ -302,21 +303,31 @@ begin
             on c.order_id = w.order_id and c.product_id = w.product_id and c.variant = w.variant
           where c.qty is distinct from w.qty) d;
 
-  -- Anmerkungen (nur offene Bestellungen)
+  -- Notizen (nur offene Bestellungen; Produkt-Notizen nur für gewählte Produkte)
   create temp table _nwant on commit drop as
-    select distinct on (1) (x->>'order_id')::uuid as order_id, left(nullif(trim(x->>'note'), ''), 500) as note
+    select distinct on (1, 2) (x->>'order_id')::uuid as order_id, coalesce(x->>'product_id', '') as product_id,
+           left(trim(x->>'note'), 500) as note
     from jsonb_array_elements(coalesce(p_notes, '[]'::jsonb)) x
-    where (x->>'order_id')::uuid in (select id from orders where project_id = v_project and not closed);
-  select coalesce(jsonb_agg(jsonb_build_object('order_id', n.order_id, 'type', 'note', 'note', coalesce(n.note, ''))), '[]'::jsonb)
+    where nullif(trim(x->>'note'), '') is not null
+      and (x->>'order_id')::uuid in (select id from orders where project_id = v_project and not closed);
+  delete from _nwant n where n.product_id <> ''
+    and not exists (select 1 from _want w where w.order_id = n.order_id and w.product_id = n.product_id);
+  create temp table _ncur on commit drop as
+    select c.order_id, c.product_id, c.note from order_notes c
+    where c.participant_id = p_id
+      and c.order_id in (select id from orders where project_id = v_project and not closed);
+  select coalesce(jsonb_agg(jsonb_build_object('order_id', coalesce(n.order_id, c.order_id), 'product_id', coalesce(n.product_id, c.product_id),
+                                               'type', 'note', 'note', coalesce(n.note, ''))), '[]'::jsonb)
     into v_note_changes
-    from _nwant n left join order_notes c on c.participant_id = p_id and c.order_id = n.order_id
+    from _nwant n full join _ncur c on c.order_id = n.order_id and c.product_id = n.product_id
     where c.note is distinct from n.note;
   if v_note_changes <> '[]'::jsonb then
-    delete from order_notes c using _nwant n
-      where c.participant_id = p_id and c.order_id = n.order_id and n.note is null;
-    insert into order_notes (participant_id, order_id, note, forward, updated_at)
-      select p_id, n.order_id, n.note, false, now() from _nwant n where n.note is not null
-      on conflict (participant_id, order_id) do update
+    delete from order_notes o using _ncur c
+      where o.participant_id = p_id and o.order_id = c.order_id and o.product_id = c.product_id
+        and not exists (select 1 from _nwant n where n.order_id = c.order_id and n.product_id = c.product_id);
+    insert into order_notes (participant_id, order_id, product_id, note, forward, updated_at)
+      select p_id, n.order_id, n.product_id, n.note, false, now() from _nwant n
+      on conflict (participant_id, order_id, product_id) do update
         set note = excluded.note, forward = false, updated_at = now()
         where order_notes.note is distinct from excluded.note;
   end if;

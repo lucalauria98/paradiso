@@ -12,8 +12,10 @@ let catalog, project, tabs, activeOrder, activeTab, submittedAt = null, busy = f
 let vegOnly = localStorage.getItem("paradiso-veg") === "1"; // Filter „Nur vegetarisch“
 // Abgeschickter Stand (wie beim Admin) und Entwurf im Browser: "bestellung|produkt|größe" → Menge
 let sent = new Map(), draft = new Map();
-// Anmerkungen je Bestellung: abgeschickt / Entwurf (bestellung → Text)
+// Notizen: abgeschickt / Entwurf. Schlüssel "bestellung|produkt" – Produkt leer = Anmerkung zur ganzen Bestellung
 let sentNotes = new Map(), draftNotes = new Map();
+const nkey = (orderId, productId = "") => orderId + "|" + productId;
+let noteOpen = null; // Produkt, dessen Notizfeld auf der Karte gerade offen ist
 const key = (orderId, productId, v) => orderId + "|" + productId + "|" + v;
 const split = (k) => { const [order_id, product_id, variant] = k.split("|"); return { order_id, product_id, variant }; };
 const order = (id = activeOrder) => project.orders.find((o) => o.id === id);
@@ -48,7 +50,7 @@ async function loadMine() {
   const r = await api.guestItems(me.id, me.secret);
   sent = new Map(r.items.map((i) => [key(i.order_id, i.product_id, i.variant), i.qty]));
   draft = new Map(sent);
-  sentNotes = new Map((r.notes || []).map((n) => [n.order_id, n.note]));
+  sentNotes = new Map((r.notes || []).map((n) => [nkey(n.order_id, n.product_id), n.note]));
   draftNotes = new Map(sentNotes);
   submittedAt = r.submitted_at;
 }
@@ -101,7 +103,9 @@ const isOpen = (k) => !order(k.split("|")[0])?.closed;
 function changedKeys() {
   return [...new Set([...sent.keys(), ...draft.keys()])].filter((k) => isOpen(k) && (sent.get(k) || 0) !== (draft.get(k) || 0));
 }
-const notesChanged = () => project.orders.filter((o) => !o.closed && (sentNotes.get(o.id) || "").trim() !== (draftNotes.get(o.id) || "").trim());
+// Bestellungen, in denen sich eine Notiz geändert hat
+const notesChanged = () => project.orders.filter((o) => !o.closed && [...new Set([...sentNotes.keys(), ...draftNotes.keys()])]
+  .some((k) => k.startsWith(o.id + "|") && (sentNotes.get(k) || "").trim() !== (draftNotes.get(k) || "").trim()));
 const dirty = () => changedKeys().length > 0 || notesChanged().length > 0;
 function persistDraft() {
   dirty() ? localStorage.setItem(draftKey, JSON.stringify({ items: [...draft], notes: [...draftNotes] })) : localStorage.removeItem(draftKey);
@@ -162,6 +166,23 @@ function renderCatalog() {
   $("chips").innerHTML = chipsHtml(products);
   $("catalog").innerHTML = sectionsHtml(products, cardHtml);
   $("catalog").onclick = onCatalogClick;
+  // Produkt-Notiz tippen: nur Entwurf aktualisieren (Feld nicht neu zeichnen, sonst springt der Cursor)
+  $("catalog").oninput = (e) => {
+    const t = e.target.closest("[data-pnote]"); if (!t) return;
+    draftNotes.set(nkey(activeOrder, t.dataset.pnote), t.value);
+    persistDraft(); renderBar();
+  };
+}
+
+// Notiz zu einem Produkt (z. B. „mit Bio-Rindhack“) – erscheint, sobald es gewählt ist
+function cardNoteHtml(p) {
+  const note = draftNotes.get(nkey(activeOrder, p.id)) || "";
+  if (order().closed) return note ? `<p class="pnote-ro">📝 ${esc(note)}</p>` : "";
+  if (noteOpen === p.id) return `<div class="pnote-edit"><textarea class="field note-in small" data-pnote="${p.id}" rows="2" maxlength="300"
+      placeholder="Notiz zu ${esc(p.name)}, z. B. „mit Bio-Rindhack“">${esc(note)}</textarea>
+      <button class="link-btn" data-noteclose="${p.id}">fertig</button></div>`;
+  return note ? `<button class="pnote" data-noteopen="${p.id}" title="Notiz ändern">📝 ${esc(note)}</button>`
+    : `<button class="pnote-add" data-noteopen="${p.id}">📝 Notiz</button>`;
 }
 
 // Karte: je Größe (Mini / Normal) eine Zeile mit Preis und eigener Menge
@@ -179,7 +200,7 @@ function cardHtml(p) {
   }).join("");
   return `<article class="card ${total ? "picked" : ""}" id="card-${p.id}">
     <div class="ph">${img}${p.veggie ? `<span class="veg-badge">🌱 Vegetarisch</span>` : ""}${total ? `<span class="badge">${total}</span>` : ""}</div>
-    <div class="body"><div class="name">${esc(p.name)}</div><div class="foot">${rows}</div></div></article>`;
+    <div class="body"><div class="name">${esc(p.name)}</div><div class="foot">${rows}${total && !p.coming_soon ? cardNoteHtml(p) : ""}</div></div></article>`;
 }
 
 const stepperHtml = (orderId, id, v, q) =>
@@ -188,6 +209,14 @@ const stepperHtml = (orderId, id, v, q) =>
 function onCatalogClick(e) {
   const z = e.target.closest("[data-zoom]");
   if (z) return zoom(z.dataset.zoom);
+  const n = e.target.closest("[data-noteopen],[data-noteclose]");
+  if (n) {
+    const id = n.dataset.noteopen || n.dataset.noteclose;
+    noteOpen = n.dataset.noteopen ? id : null;
+    $("card-" + id).outerHTML = cardHtml(prod(id));
+    if (noteOpen) $("card-" + id).querySelector("textarea")?.focus();
+    return;
+  }
   const b = e.target.closest("button[data-id]");
   if (b) change(b.dataset.order, b.dataset.id, b.dataset.v, +b.dataset.d);
 }
@@ -197,6 +226,8 @@ function change(orderId, id, v, d) {
   const k = key(orderId, id, v);
   const q = Math.max(0, Math.min(500, (draft.get(k) || 0) + d));
   q ? draft.set(k, q) : draft.delete(k);
+  // Produkt ganz abgewählt → Notiz dazu fällt weg
+  if (!variantsOf(prod(id)).some((x) => draft.get(key(orderId, id, x)))) { draftNotes.delete(nkey(orderId, id)); if (noteOpen === id) noteOpen = null; }
   persistDraft();
   const card = $("card-" + id);
   if (card && orderId === activeOrder) card.outerHTML = cardHtml(prod(id));
@@ -212,7 +243,8 @@ async function submit() {
   const before = new Set(changedKeys().map((k) => k.split("|")[0]).concat(notesChanged().map((o) => o.id)));
   try {
     const items = [...draft].map(([k, qty]) => ({ ...split(k), qty }));
-    const notes = project.orders.filter((o) => !o.closed).map((o) => ({ order_id: o.id, note: (draftNotes.get(o.id) || "").trim() }));
+    const notes = [...draftNotes].map(([k, note]) => { const [order_id, product_id] = k.split("|"); return { order_id, product_id, note: note.trim() }; })
+      .filter((n) => n.note && !order(n.order_id)?.closed);
     await api.guestSubmit(me.id, me.secret, items, notes);
     project = await api.guestProject(code);
     await loadMine();
@@ -220,7 +252,7 @@ async function submit() {
     const lost = project.orders.filter((o) => o.closed && before.has(o.id));
     toast(lost.length ? `„${lost.map((o) => o.title).join("“, „")}“ ist inzwischen geschlossen – dort wurde nichts geändert.`
       : "Abgeschickt ✓ – du kannst jederzeit ändern und erneut abschicken.", 4000);
-    renderInfo(); renderOrders(); renderCatalog();
+    noteOpen = null; renderInfo(); renderOrders(); renderCatalog();
     if (!$("sheet").classList.contains("hidden")) renderSheet();
   } catch (e) { toast("Abschicken fehlgeschlagen: " + e.message, 5000); }
   finally { busy = false; renderBar(); }
@@ -248,26 +280,33 @@ function openSheet() { renderSheet(); renderBar(); $("sheet").classList.remove("
 $("cartBtn").onclick = openSheet;
 $("sheetClose").onclick = $("sheetBg").onclick = () => { $("sheet").classList.add("hidden"); $("sheetBg").classList.add("hidden"); };
 
-// Übersicht über alle Bestellungen des Projekts, je Bestellung mit Anmerkungsfeld
+// Übersicht über alle Bestellungen des Projekts: Produkte mit Notiz + Anmerkung zur ganzen Bestellung
 function renderSheet() {
   const multiShop = new Set(catalog.products.map((p) => p.shop)).size > 1;
   let total = [0, 0], minis = 0, tbd = 0, any = false;
   const html = project.orders.map((o) => {
-    const list = catalog.products.flatMap((p) => variantsOf(p).filter((v) => draft.get(key(o.id, p.id, v))).map((v) => ({ p, v })));
-    const note = draftNotes.get(o.id) || "";
-    if (list.length || note) any = true;
-    const rows = list.map(({ p, v }) => {
-      const q = draft.get(key(o.id, p.id, v));
-      const c = v === "stk" ? stkCost(p, q) : null;
-      if (c) total = [total[0] + c[0], total[1] + c[1]]; else if (v === "mini") minis += q; else tbd += q;
-      const size = variantLabel(p, v);
-      return `<div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
-        <div class="grow">${p.veggie ? "🌱 " : ""}${esc(p.name)}${size ? ` <span class="size">${size}</span>` : ""}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name + " · " : "")}${priceText(p, v)}</small></div>
-        ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, v, q)}</div>`;
+    const products = catalog.products.filter((p) => variantsOf(p).some((v) => draft.get(key(o.id, p.id, v))));
+    const note = draftNotes.get(nkey(o.id)) || "";
+    if (products.length || note) any = true;
+    const rows = products.map((p) => {
+      const lines = variantsOf(p).filter((v) => draft.get(key(o.id, p.id, v))).map((v) => {
+        const q = draft.get(key(o.id, p.id, v));
+        const c = v === "stk" ? stkCost(p, q) : null;
+        if (c) total = [total[0] + c[0], total[1] + c[1]]; else if (v === "mini") minis += q; else tbd += q;
+        const size = variantLabel(p, v);
+        return `<div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
+          <div class="grow">${p.veggie ? "🌱 " : ""}${esc(p.name)}${size ? ` <span class="size">${size}</span>` : ""}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name + " · " : "")}${priceText(p, v)}</small></div>
+          ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, v, q)}</div>`;
+      }).join("");
+      const pn = draftNotes.get(nkey(o.id, p.id)) || "";
+      const pnHtml = o.closed ? (pn ? `<p class="pnote-ro">📝 ${esc(pn)}</p>` : "")
+        : `<input class="field note-in small" data-order="${o.id}" data-pnote="${p.id}" maxlength="300" value="${esc(pn)}" placeholder="📝 Notiz zu ${esc(p.name)} (optional)">`;
+      return `<div class="sheet-prod">${lines}${pnHtml}</div>`;
     }).join("");
     const noteHtml = o.closed
       ? (note ? `<p class="note-ro">📝 ${esc(note)}</p>` : "")
-      : `<textarea class="field note-in" data-note="${o.id}" rows="2" maxlength="500" placeholder="Anmerkung (optional), z. B. „Arancini bitte ohne Erbsen“">${esc(note)}</textarea>`;
+      : `<label class="note-label">Anmerkung zur ganzen Bestellung <span class="cat-note">(optional)</span>
+          <textarea class="field note-in" data-note="${o.id}" rows="2" maxlength="500" placeholder="z. B. „Bitte alles getrennt verpacken“">${esc(note)}</textarea></label>`;
     return `<div class="shop-head">${esc(o.title)}${o.pickup_at ? " · " + esc(fmtPickup(o.pickup_at)) : ""}${o.closed ? " · geschlossen" : ""}</div>
       ${rows || `<p class="cat-note" style="margin:6px 0">Noch nichts ausgewählt.</p>`}${noteHtml}`;
   }).join("");
@@ -275,10 +314,10 @@ function renderSheet() {
   const parts = [total[1] ? `Normale Teile <b>${fmtSpan(total)}</b>` : "", minis ? `${minis} Minis nach Gewicht` : "", tbd ? `${tbd} Teile, Preis folgt` : ""].filter(Boolean);
   $("sheetTotal").innerHTML = any ? parts.join(" · ") : "";
   $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.order, b.dataset.id, b.dataset.v, +b.dataset.d); };
-  // Anmerkung tippen: nur Entwurf aktualisieren (Feld nicht neu zeichnen, sonst springt der Cursor)
+  // Notizen tippen: nur Entwurf aktualisieren (Feld nicht neu zeichnen, sonst springt der Cursor)
   $("sheetBody").oninput = (e) => {
-    const t = e.target.closest("[data-note]"); if (!t) return;
-    draftNotes.set(t.dataset.note, t.value);
+    const t = e.target.closest("[data-note],[data-pnote]"); if (!t) return;
+    draftNotes.set(t.dataset.note ? nkey(t.dataset.note) : nkey(t.dataset.order, t.dataset.pnote), t.value);
     persistDraft(); renderBar();
   };
 }
