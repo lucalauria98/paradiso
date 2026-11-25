@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bestellung · Café Paradiso</title>
+<meta name="theme-color" content="#1f6f4a">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="demo" class="demo-note hidden">Demo-Modus: Bestellungen werden nur in diesem Browser gespeichert.</div>
+<header class="top">
+  <div class="wrap">
+    <div class="kicker">Gemeinsame Bestellung</div>
+    <h1 id="title">…</h1>
+    <div class="who hidden" id="who"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- Fehler / kein Link -->
+  <section id="nolink" class="panel hidden">
+    <h2>Link fehlt</h2>
+    <p id="nolinkText">Diese Seite funktioniert nur über den Einladungslink, den du vom Gastgeber bekommen hast.</p>
+  </section>
+
+  <!-- Name eingeben -->
+  <section id="join" class="panel hidden">
+    <h2>Wie heißt du?</h2>
+    <p>Gib deinen Namen ein und such dir dann aus, was du gern hättest. Deine Auswahl wird automatisch gespeichert.</p>
+    <form id="joinForm">
+      <input class="field" id="nameInput" maxlength="60" placeholder="z. B. Tante Maria" autocomplete="given-name" required>
+      <button class="btn" type="submit">Los geht's</button>
+    </form>
+    <div class="error" id="joinError"></div>
+  </section>
+
+  <!-- Katalog -->
+  <section id="shopView" class="hidden">
+    <div class="sticky">
+      <div class="tabs" id="tabs"></div>
+      <nav class="chips" id="chips"></nav>
+    </div>
+    <div id="catalog"></div>
+    <div class="spacer"></div>
+  </section>
+</main>
+
+<div class="bar hidden" id="bar">
+  <button class="btn" id="cartBtn"><span id="cartLabel">Deine Auswahl</span><span class="saved" id="savedLabel">gespeichert ✓</span></button>
+</div>
+
+<div id="sheetBg" class="sheet-bg hidden"></div>
+<section id="sheet" class="sheet hidden" aria-label="Deine Auswahl">
+  <h2>Deine Auswahl <button id="sheetClose" aria-label="Schließen">×</button></h2>
+  <div id="sheetBody"></div>
+  <p class="cat-note" style="margin-top:14px">Du kannst deine Auswahl jederzeit über denselben Link ändern, solange die Bestellung offen ist.</p>
+</section>
+
+<div id="lightbox" class="lightbox hidden"></div>
+
+<script type="module" src="guest.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin · Bestellungen</title>
+<meta name="theme-color" content="#1f6f4a">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="demo" class="demo-note hidden no-print">Demo-Modus: Daten liegen nur in diesem Browser. Öffne den Gäste-Link im selben Browser, um es auszuprobieren.</div>
+<header class="top">
+  <div class="wrap">
+    <div class="kicker">Admin · Gesamtbestellung</div>
+    <h1 id="title">Bestellungen</h1>
+    <div class="who hidden no-print" id="who"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="login" class="panel hidden">
+    <h2>Admin-Login</h2>
+    <p>Nur für den Gastgeber. Zugang legst du einmalig im Supabase-Dashboard an (Authentication → Users → Add user).</p>
+    <form id="loginForm">
+      <input class="field" id="email" type="email" placeholder="E-Mail" autocomplete="username" required>
+      <input class="field" id="pw" type="password" placeholder="Passwort" autocomplete="current-password" required>
+      <button class="btn" type="submit">Anmelden</button>
+    </form>
+    <div class="error" id="loginError"></div>
+  </section>
+
+  <section id="dash" class="hidden">
+    <div class="box no-print">
+      <div class="toolbar">
+        <select class="field" id="eventSel" aria-label="Bestellung wählen"></select>
+        <button class="btn small ghost" id="newEvent">+ Neue Bestellung</button>
+        <span class="live" id="live">live</span>
+      </div>
+    </div>
+
+    <div id="noEvent" class="empty hidden">Noch keine Bestellung angelegt. Tipp auf „+ Neue Bestellung".</div>
+
+    <div id="eventView" class="hidden">
+      <div class="box no-print">
+        <h3>Einladungslink <span id="closedTag"></span></h3>
+        <div class="invite">
+          <code id="inviteLink"></code>
+          <button class="btn small" id="copyLink">Kopieren</button>
+          <a class="btn small ghost" id="waLink" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
+        <p class="cat-note" style="margin:10px 0 0">Schick den Link nur an die Familie. Wer ihn hat, kann sich mit Namen eintragen und bestellen, sieht aber nur die eigene Auswahl.</p>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="box">
+        <div class="toolbar no-print" style="margin-bottom:10px">
+          <div class="tabs" id="viewTabs" style="flex:1;min-width:240px">
+            <button data-v="product" class="on">Nach Produkt</button>
+            <button data-v="person">Nach Person</button>
+          </div>
+          <button class="btn small ghost" id="copyList">Bestellliste kopieren</button>
+          <button class="btn small ghost" id="print">Drucken</button>
+          <button class="btn small" id="toggleClosed"></button>
+        </div>
+        <div id="byProduct"></div>
+        <div id="byPerson" class="hidden"></div>
+      </div>
+      <p class="cat-note">Preise sind Schätzungen: Minis mit 18 €/kg und geschätztem Stückgewicht, sonstige Teile mit 3–6 € pro Stück. Genaue Preise/Gewichte in Supabase in der Tabelle <i>products</i> anpassen.</p>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>
