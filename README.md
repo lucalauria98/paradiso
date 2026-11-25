@@ -86,6 +86,10 @@ Gäste greifen nie direkt auf Tabellen zu, nur über die Funktionen `guest_*` (g
 - **Bestellplanung (Admin, pro Bestellung):** Spalte „Bestellen“ – Minis in Gramm (Vorschlag aus den Wünschen, auf
   100 g aufgerundet), normale Teile in Stück, optional „Minis gemischt“ je Kategorie, Endbetrag laut Bon.
   Bestellliste und Kostenschätzung nutzen diese Mengen.
+- **Vegetarisch:** Haken „🌱 Vegetarisch“ im Editor → grünes Label + Gäste-Filter „Nur vegetarisch“. Produkte, die es in
+  beiden Varianten gibt, stehen doppelt im Katalog („– vegetarisch“ / „– mit Fleisch“).
+- **Anmerkungen:** Gäste können pro Bestellung eine Notiz mitschicken. Du siehst sie in der Bestellplanung und hakst an,
+  welche als „Hinweise“ in die Bestellliste für den Laden sollen.
 - Bekannte Preise: herzhafte Minis **18 €/kg**, herzhaft normal **ca. 3–6 €/Stück**. Süßes: Preis folgt.
 
 ## Antipasti-Laden ergänzen

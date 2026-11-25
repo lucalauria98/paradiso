@@ -48,8 +48,10 @@ create table if not exists products (
   sort          int not null default 0,
   coming_soon   boolean not null default false,
   active        boolean not null default true,
+  veggie        boolean not null default false,   -- vegetarisch (🌱-Label, Filter für Gäste)
   constraint products_size_check check (has_mini or has_piece)
 );
+alter table products add column if not exists veggie boolean not null default false;  -- für bestehende Datenbanken
 
 -- ───────────── Projekte & Bestellungen ─────────────
 create table if not exists projects (
@@ -104,7 +106,18 @@ create table if not exists order_plan (
   primary key (order_id, product_id, variant)
 );
 
--- Verlauf: jedes Abschicken mit Änderungen, changes = [{order_id, product_id, variant, old, new}]
+-- Anmerkungen der Gäste je Bestellung (z. B. „Arancini bitte ohne Erbsen“).
+-- forward = Admin gibt sie an den Laden weiter (steht dann in der Bestellliste); jede Änderung setzt es zurück.
+create table if not exists order_notes (
+  participant_id uuid not null references participants(id) on delete cascade,
+  order_id       uuid not null references orders(id) on delete cascade,
+  note           text not null check (char_length(note) between 1 and 500),
+  forward        boolean not null default false,
+  updated_at     timestamptz not null default now(),
+  primary key (participant_id, order_id)
+);
+
+-- Verlauf: jedes Abschicken mit Änderungen, changes = [{order_id, product_id, variant, old, new} | {order_id, type:'note', note}]
 create table if not exists submissions (
   id             bigint generated always as identity primary key,
   project_id     uuid not null references projects(id) on delete cascade,
@@ -121,8 +134,8 @@ grant usage on schema public to anon, authenticated;
 revoke all on shops, products from anon;                 -- Gäste: Katalog nur lesen
 grant select on shops, products to anon, authenticated;
 grant insert, update on products to authenticated;
-grant select, insert, update, delete on projects, orders, participants, order_items, submissions, order_plan to authenticated;
-revoke all on admins, projects, orders, participants, order_items, submissions, order_plan from anon;
+grant select, insert, update, delete on projects, orders, participants, order_items, submissions, order_plan, order_notes to authenticated;
+revoke all on admins, projects, orders, participants, order_items, submissions, order_plan, order_notes from anon;
 revoke all on admins from authenticated;
 grant execute on function is_admin() to authenticated;
 
@@ -135,6 +148,7 @@ alter table participants enable row level security;
 alter table order_items  enable row level security;
 alter table submissions  enable row level security;
 alter table order_plan   enable row level security;
+alter table order_notes  enable row level security;
 
 -- Katalog: alle dürfen lesen, nur Admins ändern
 drop policy if exists "shops read" on shops;
@@ -169,6 +183,11 @@ create policy "items admin" on order_items for all to authenticated
 drop policy if exists "submissions admin" on submissions;
 create policy "submissions admin" on submissions for all to authenticated
   using (exists (select 1 from projects p where p.id = project_id and p.admin_id = auth.uid()));
+
+drop policy if exists "notes admin" on order_notes;
+create policy "notes admin" on order_notes for all to authenticated
+  using (exists (select 1 from participants pa join projects p on p.id = pa.project_id
+                 where pa.id = participant_id and p.admin_id = auth.uid()));
 
 drop policy if exists "plan admin" on order_plan;
 create policy "plan admin" on order_plan for all to authenticated
@@ -218,7 +237,7 @@ returns uuid language sql security definer set search_path = public as $$
   select p.project_id from participants p where p.id = p_id and p.secret = p_secret;
 $$;
 
--- Eigener abgeschickter Stand: {items: [{order_id, product_id, variant, qty}], submitted_at}
+-- Eigener abgeschickter Stand: {items: [{order_id, product_id, variant, qty}], notes: [{order_id, note}], submitted_at}
 create or replace function guest_items(p_id uuid, p_secret uuid)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -227,21 +246,25 @@ begin
   return jsonb_build_object(
     'items', coalesce((select jsonb_agg(jsonb_build_object('order_id', i.order_id, 'product_id', i.product_id, 'variant', i.variant, 'qty', i.qty))
                        from order_items i where i.participant_id = p_id), '[]'::jsonb),
+    'notes', coalesce((select jsonb_agg(jsonb_build_object('order_id', n.order_id, 'note', n.note))
+                       from order_notes n where n.participant_id = p_id), '[]'::jsonb),
     'submitted_at', (select max(s.created_at) from submissions s where s.participant_id = p_id));
 end $$;
 
--- Auswahl abschicken: p_items = [{order_id, product_id, variant, qty}] = gesamter gewünschter Stand.
+-- Auswahl abschicken: p_items = [{order_id, product_id, variant, qty}] = gesamter gewünschter Stand,
+-- p_notes = [{order_id, note}] (leer = Anmerkung löschen).
 -- Ersetzt den Stand in allen OFFENEN Bestellungen des Projekts, schreibt Änderungen in den Verlauf
 -- und liefert {changes, submitted_at}. Geschlossene Bestellungen bleiben unberührt.
-create or replace function guest_submit(p_id uuid, p_secret uuid, p_items jsonb)
+drop function if exists guest_submit(uuid, uuid, jsonb);   -- alte Version ohne Anmerkungen
+create or replace function guest_submit(p_id uuid, p_secret uuid, p_items jsonb, p_notes jsonb default '[]'::jsonb)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare v_project uuid; v_name text; v_changes jsonb; v_bad text;
+declare v_project uuid; v_name text; v_changes jsonb; v_note_changes jsonb; v_bad text;
 begin
   select project_id, name into v_project, v_name from participants where id = p_id and secret = p_secret;
   if v_project is null then raise exception 'Nicht berechtigt'; end if;
 
-  drop table if exists _want, _cur;
+  drop table if exists _want, _cur, _nwant;
   create temp table _want on commit drop as
     select (x->>'order_id')::uuid as order_id, x->>'product_id' as product_id, x->>'variant' as variant,
            least(max((x->>'qty')::int), 500) as qty
@@ -279,11 +302,33 @@ begin
             on c.order_id = w.order_id and c.product_id = w.product_id and c.variant = w.variant
           where c.qty is distinct from w.qty) d;
 
+  -- Anmerkungen (nur offene Bestellungen)
+  create temp table _nwant on commit drop as
+    select distinct on (1) (x->>'order_id')::uuid as order_id, left(nullif(trim(x->>'note'), ''), 500) as note
+    from jsonb_array_elements(coalesce(p_notes, '[]'::jsonb)) x
+    where (x->>'order_id')::uuid in (select id from orders where project_id = v_project and not closed);
+  select coalesce(jsonb_agg(jsonb_build_object('order_id', n.order_id, 'type', 'note', 'note', coalesce(n.note, ''))), '[]'::jsonb)
+    into v_note_changes
+    from _nwant n left join order_notes c on c.participant_id = p_id and c.order_id = n.order_id
+    where c.note is distinct from n.note;
+  if v_note_changes <> '[]'::jsonb then
+    delete from order_notes c using _nwant n
+      where c.participant_id = p_id and c.order_id = n.order_id and n.note is null;
+    insert into order_notes (participant_id, order_id, note, forward, updated_at)
+      select p_id, n.order_id, n.note, false, now() from _nwant n where n.note is not null
+      on conflict (participant_id, order_id) do update
+        set note = excluded.note, forward = false, updated_at = now()
+        where order_notes.note is distinct from excluded.note;
+  end if;
+
   if v_changes <> '[]'::jsonb then
     delete from order_items i using _cur c
       where i.participant_id = p_id and i.order_id = c.order_id and i.product_id = c.product_id and i.variant = c.variant;
     insert into order_items (participant_id, order_id, product_id, variant, qty, updated_at)
       select p_id, w.order_id, w.product_id, w.variant, w.qty, now() from _want w;
+  end if;
+  v_changes := v_changes || v_note_changes;
+  if v_changes <> '[]'::jsonb then
     insert into submissions (project_id, participant_id, name, changes) values (v_project, p_id, v_name, v_changes);
   end if;
 
@@ -295,7 +340,7 @@ revoke all on function _guest_check(uuid, uuid) from public, anon, authenticated
 grant execute on function guest_project(text)                 to anon, authenticated;
 grant execute on function guest_join(text, text)              to anon, authenticated;
 grant execute on function guest_items(uuid, uuid)             to anon, authenticated;
-grant execute on function guest_submit(uuid, uuid, jsonb)     to anon, authenticated;
+grant execute on function guest_submit(uuid, uuid, jsonb, jsonb) to anon, authenticated;
 
 -- ───────────── Produktbilder (Supabase Storage) ─────────────
 -- Öffentlich lesbar (wie die Bilder auf GitHub Pages), hochladen/löschen nur Admins.

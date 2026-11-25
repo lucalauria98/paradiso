@@ -25,6 +25,8 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 - Bekannt: herzhafte Minis 18 €/kg, herzhaft normal ca. 3–6 €. Alles Süße (Minis, Kekse, normale Teile, Cornetti): „Preis folgt“
 - Gäste sehen KEINE Cent-Schätzungen pro Mini-Stück (Nutzer: „irritiert nur“) – nur €/kg bzw. €/Stück oder „Preis folgt“
 - Gäste wählen Größe + Stückzahl; Admin legt pro Bestellung die Bestellmenge fest (Minis in Gramm, Vorschlag = Wünsche × Stückgewicht auf 100 g aufgerundet; optional gemischt je Kategorie; Endbetrag laut Bon)
+- Vegetarisch: products.veggie → 🌱-Label + Filter „Nur vegetarisch“ für Gäste. Unklare Produkte (Teigtaschen, Brötchen, Pizza-Brioche, Frittiertes, Arancini, Calzone) gibt es doppelt: „– vegetarisch“ (id) und „– mit Fleisch“ (id-fleisch). Arancini veggie = Spinat.
+- Anmerkungen: Gäste schreiben pro Bestellung eine Notiz (order_notes); Admin hakt „an Laden weitergeben“ an → erscheint als „Hinweise“ in der Bestellliste. Änderung durch Gast setzt den Haken zurück.
 - DB: products.has_mini/has_piece (Größe gibt es) + mini_price_kg/mini_weight_g/piece_price_min/max (null = Preis folgt); order_items.variant 'mini'|'stk'; order_plan (Admin-Mengen); orders.mini_mix/final_amount
 
 ## Offene Punkte

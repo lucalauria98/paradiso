@@ -27,7 +27,8 @@
    "piece_price_min": 3,
    "piece_price_max": 6,
    "sort": 0,
-   "coming_soon": false
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "focaccia-oliven-tomate",
@@ -43,8 +44,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 1,
-   "coming_soon": false
+   "sort": 10,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "pizzetta-aubergine-mozzarella",
@@ -60,8 +62,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 2,
-   "coming_soon": false
+   "sort": 20,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "panino-salsiccia-salat",
@@ -77,8 +80,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 3,
-   "coming_soon": false
+   "sort": 30,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "auberginen-baguette",
@@ -94,8 +98,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 4,
-   "coming_soon": false
+   "sort": 40,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "focaccia-sesam-thunfisch",
@@ -111,8 +116,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 5,
-   "coming_soon": false
+   "sort": 50,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "focaccia-oliven-salami",
@@ -128,8 +134,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 6,
-   "coming_soon": false
+   "sort": 60,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "focaccia-sesam-schinken",
@@ -145,8 +152,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 7,
-   "coming_soon": false
+   "sort": 70,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "pizzetta-aubergine",
@@ -162,8 +170,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 8,
-   "coming_soon": false
+   "sort": 80,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "pizzetta-spinat",
@@ -179,8 +188,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 9,
-   "coming_soon": false
+   "sort": 90,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "teigtasche-sesam",
@@ -188,7 +198,7 @@
    "code": "V1-2.3",
    "category": "Herzhaftes",
    "kind": "herzhaft",
-   "name": "Gefüllte Sesam-Teigtaschen",
+   "name": "Gefüllte Sesam-Teigtaschen – vegetarisch",
    "image": "img/paradiso/teigtasche-sesam.jpg",
    "has_mini": true,
    "has_piece": true,
@@ -196,8 +206,27 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 10,
-   "coming_soon": false
+   "sort": 100,
+   "coming_soon": false,
+   "veggie": true
+  },
+  {
+   "id": "teigtasche-sesam-fleisch",
+   "shop": "paradiso",
+   "code": "V1-2.3",
+   "category": "Herzhaftes",
+   "kind": "herzhaft",
+   "name": "Gefüllte Sesam-Teigtaschen – mit Fleisch",
+   "image": "img/paradiso/teigtasche-sesam.jpg",
+   "has_mini": true,
+   "has_piece": true,
+   "mini_price_kg": 18,
+   "mini_weight_g": 45,
+   "piece_price_min": 3,
+   "piece_price_max": 6,
+   "sort": 105,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "broetchen-gefuellt",
@@ -205,7 +234,7 @@
    "code": "V1-2.4",
    "category": "Herzhaftes",
    "kind": "herzhaft",
-   "name": "Gefüllte Brötchen",
+   "name": "Gefüllte Brötchen – vegetarisch",
    "image": "img/paradiso/broetchen-gefuellt.jpg",
    "has_mini": true,
    "has_piece": true,
@@ -213,8 +242,27 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 11,
-   "coming_soon": false
+   "sort": 110,
+   "coming_soon": false,
+   "veggie": true
+  },
+  {
+   "id": "broetchen-gefuellt-fleisch",
+   "shop": "paradiso",
+   "code": "V1-2.4",
+   "category": "Herzhaftes",
+   "kind": "herzhaft",
+   "name": "Gefüllte Brötchen – mit Fleisch",
+   "image": "img/paradiso/broetchen-gefuellt.jpg",
+   "has_mini": true,
+   "has_piece": true,
+   "mini_price_kg": 18,
+   "mini_weight_g": 45,
+   "piece_price_min": 3,
+   "piece_price_max": 6,
+   "sort": 115,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "rolle-aubergine-schinken",
@@ -230,8 +278,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 12,
-   "coming_soon": false
+   "sort": 120,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "pizzetta-wuerstchen-pommes",
@@ -247,8 +296,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 13,
-   "coming_soon": false
+   "sort": 130,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "koerbchen-prosciutto",
@@ -264,8 +314,9 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 14,
-   "coming_soon": false
+   "sort": 140,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "pizza-brioche",
@@ -273,7 +324,7 @@
    "code": "V1-2.8",
    "category": "Herzhaftes",
    "kind": "herzhaft",
-   "name": "Pizza-Brioche",
+   "name": "Pizza-Brioche – vegetarisch",
    "image": "img/paradiso/pizza-brioche.jpg",
    "has_mini": true,
    "has_piece": true,
@@ -281,8 +332,27 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 15,
-   "coming_soon": false
+   "sort": 150,
+   "coming_soon": false,
+   "veggie": true
+  },
+  {
+   "id": "pizza-brioche-fleisch",
+   "shop": "paradiso",
+   "code": "V1-2.8",
+   "category": "Herzhaftes",
+   "kind": "herzhaft",
+   "name": "Pizza-Brioche – mit Fleisch",
+   "image": "img/paradiso/pizza-brioche.jpg",
+   "has_mini": true,
+   "has_piece": true,
+   "mini_price_kg": 18,
+   "mini_weight_g": 45,
+   "piece_price_min": 3,
+   "piece_price_max": 6,
+   "sort": 155,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "frittiert",
@@ -290,7 +360,7 @@
    "code": "V1-2.9",
    "category": "Herzhaftes",
    "kind": "herzhaft",
-   "name": "Frittiertes Teilchen (Name folgt)",
+   "name": "Frittiertes Teilchen (Name folgt) – vegetarisch",
    "image": "img/paradiso/frittiert.jpg",
    "has_mini": true,
    "has_piece": true,
@@ -298,8 +368,27 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 16,
-   "coming_soon": false
+   "sort": 160,
+   "coming_soon": false,
+   "veggie": true
+  },
+  {
+   "id": "frittiert-fleisch",
+   "shop": "paradiso",
+   "code": "V1-2.9",
+   "category": "Herzhaftes",
+   "kind": "herzhaft",
+   "name": "Frittiertes Teilchen (Name folgt) – mit Fleisch",
+   "image": "img/paradiso/frittiert.jpg",
+   "has_mini": true,
+   "has_piece": true,
+   "mini_price_kg": 18,
+   "mini_weight_g": 45,
+   "piece_price_min": 3,
+   "piece_price_max": 6,
+   "sort": 165,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "arancini",
@@ -307,7 +396,7 @@
    "code": "V1-X.1",
    "category": "Herzhaftes",
    "kind": "herzhaft",
-   "name": "Arancini",
+   "name": "Arancini – vegetarisch (Spinat)",
    "image": null,
    "has_mini": true,
    "has_piece": true,
@@ -315,8 +404,27 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 17,
-   "coming_soon": false
+   "sort": 170,
+   "coming_soon": false,
+   "veggie": true
+  },
+  {
+   "id": "arancini-fleisch",
+   "shop": "paradiso",
+   "code": "V1-X.1",
+   "category": "Herzhaftes",
+   "kind": "herzhaft",
+   "name": "Arancini – mit Fleisch",
+   "image": null,
+   "has_mini": true,
+   "has_piece": true,
+   "mini_price_kg": 18,
+   "mini_weight_g": 45,
+   "piece_price_min": 3,
+   "piece_price_max": 6,
+   "sort": 175,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "calzone",
@@ -324,7 +432,7 @@
    "code": "V1-X.2",
    "category": "Herzhaftes",
    "kind": "herzhaft",
-   "name": "Calzone",
+   "name": "Calzone – vegetarisch",
    "image": null,
    "has_mini": true,
    "has_piece": true,
@@ -332,8 +440,27 @@
    "mini_weight_g": 45,
    "piece_price_min": 3,
    "piece_price_max": 6,
-   "sort": 18,
-   "coming_soon": false
+   "sort": 180,
+   "coming_soon": false,
+   "veggie": true
+  },
+  {
+   "id": "calzone-fleisch",
+   "shop": "paradiso",
+   "code": "V1-X.2",
+   "category": "Herzhaftes",
+   "kind": "herzhaft",
+   "name": "Calzone – mit Fleisch",
+   "image": null,
+   "has_mini": true,
+   "has_piece": true,
+   "mini_price_kg": 18,
+   "mini_weight_g": 45,
+   "piece_price_min": 3,
+   "piece_price_max": 6,
+   "sort": 185,
+   "coming_soon": false,
+   "veggie": false
   },
   {
    "id": "zucker-krapfen",
@@ -349,8 +476,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 19,
-   "coming_soon": false
+   "sort": 190,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "krapfen-creme",
@@ -366,8 +494,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 20,
-   "coming_soon": false
+   "sort": 200,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "gebaeck-muschel",
@@ -383,8 +512,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 21,
-   "coming_soon": false
+   "sort": 210,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "teilchen-creme",
@@ -400,8 +530,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 22,
-   "coming_soon": false
+   "sort": 220,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "cornetto-creme",
@@ -417,8 +548,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 23,
-   "coming_soon": false
+   "sort": 230,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "cornetto-schoko",
@@ -434,8 +566,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 24,
-   "coming_soon": false
+   "sort": 240,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "cornetto-schoko-streifen",
@@ -451,8 +584,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 25,
-   "coming_soon": false
+   "sort": 250,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "cornetto-pistazie",
@@ -468,8 +602,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 26,
-   "coming_soon": false
+   "sort": 260,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "cornetto-natur",
@@ -485,8 +620,9 @@
    "mini_weight_g": null,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 27,
-   "coming_soon": false
+   "sort": 270,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-cannoli-ricotta",
@@ -502,8 +638,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 28,
-   "coming_soon": false
+   "sort": 280,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-cannoli-vanille",
@@ -519,8 +656,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 29,
-   "coming_soon": false
+   "sort": 290,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-cannoli-schoko",
@@ -536,8 +674,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 30,
-   "coming_soon": false
+   "sort": 300,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-sfogliatelle-creme",
@@ -553,8 +692,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 31,
-   "coming_soon": false
+   "sort": 310,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-sfogliatelle-schoko",
@@ -570,8 +710,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 32,
-   "coming_soon": false
+   "sort": 320,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-sfogliatelle-weiss",
@@ -587,8 +728,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 33,
-   "coming_soon": false
+   "sort": 330,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-obsttoertchen",
@@ -604,8 +746,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 34,
-   "coming_soon": false
+   "sort": 340,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-cassatine",
@@ -621,8 +764,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 35,
-   "coming_soon": false
+   "sort": 350,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-tiramisu",
@@ -638,8 +782,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 36,
-   "coming_soon": false
+   "sort": 360,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-bigne-vanille",
@@ -655,8 +800,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 37,
-   "coming_soon": false
+   "sort": 370,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-bigne-pistazie",
@@ -672,8 +818,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 38,
-   "coming_soon": false
+   "sort": 380,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-sahnetoertchen-frucht",
@@ -689,8 +836,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 39,
-   "coming_soon": false
+   "sort": 390,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-sahnetoertchen-kaffee",
@@ -706,8 +854,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 40,
-   "coming_soon": false
+   "sort": 400,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-glasierte-toertchen",
@@ -723,8 +872,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 41,
-   "coming_soon": false
+   "sort": 410,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mini-quadratische-toertchen",
@@ -740,8 +890,9 @@
    "mini_weight_g": 30,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 42,
-   "coming_soon": false
+   "sort": 420,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "cantucci",
@@ -757,8 +908,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 43,
-   "coming_soon": false
+   "sort": 430,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "amaretti",
@@ -774,8 +926,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 44,
-   "coming_soon": false
+   "sort": 440,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mandelgebaeck",
@@ -791,8 +944,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 45,
-   "coming_soon": false
+   "sort": 450,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "mandelplaetzchen",
@@ -808,8 +962,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 46,
-   "coming_soon": false
+   "sort": 460,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "marmeladenplaetzchen",
@@ -825,8 +980,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 47,
-   "coming_soon": false
+   "sort": 470,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "spritzgebaeck",
@@ -842,8 +998,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 48,
-   "coming_soon": false
+   "sort": 480,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "spritzgebaeck-schoko",
@@ -859,8 +1016,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 49,
-   "coming_soon": false
+   "sort": 490,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "buccellati-feigenrollen",
@@ -876,8 +1034,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 50,
-   "coming_soon": false
+   "sort": 500,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "hefeteilchen-schoko",
@@ -893,8 +1052,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 51,
-   "coming_soon": false
+   "sort": 510,
+   "coming_soon": false,
+   "veggie": true
   },
   {
    "id": "kuchenschnitten",
@@ -910,8 +1070,9 @@
    "mini_weight_g": 12,
    "piece_price_min": null,
    "piece_price_max": null,
-   "sort": 52,
-   "coming_soon": false
+   "sort": 520,
+   "coming_soon": false,
+   "veggie": true
   }
  ]
 }

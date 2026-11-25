@@ -325,7 +325,7 @@ $("stats").onchange = async (e) => {
 function renderByProduct(o) {
   if (!o) return renderWishes();
   const lines = planOf(o);
-  if (!lines.length) { $("byProduct").innerHTML = `<div class="empty">Noch keine Auswahl abgeschickt.</div>`; return; }
+  if (!lines.length) { $("byProduct").innerHTML = `<div class="empty">Noch keine Auswahl abgeschickt.</div>` + notesHtml(o); return; }
   const mix = o.mini_mix || {};
   const cats = [...new Set(totals(itemsOf(o.id)).filter((r) => r.v === "mini").map((r) => r.p.category))];
   const mixBar = cats.length ? `<div class="mixbar no-print"><span class="cat-note">Minis gemischt bestellen:</span>
@@ -352,14 +352,30 @@ function renderByProduct(o) {
     return `<h3 class="serif">${esc(s.name)}</h3><table class="plan-table">
       <thead><tr><th></th><th>Produkt</th><th class="num">Wünsche</th><th class="num">Bestellen</th><th class="num">Kosten</th></tr></thead>
       <tbody>${tr}<tr class="sub"><td></td><td>Summe ${esc(s.name)}</td><td></td><td class="num">${sum.grams ? fmtKg(sum.grams) + " Minis" : ""}</td><td class="num">${sumHtml(sum)}</td></tr></tbody></table>`;
-  }).join("") + `<p class="cat-note no-print" style="margin-top:10px">Wünsche = was die Gäste gewählt haben. Unter „Bestellen“ legst du fest, was du beim Laden bestellst – das steht in der Bestellliste.</p>`;
+  }).join("") + notesHtml(o) + `<p class="cat-note no-print" style="margin-top:10px">Wünsche = was die Gäste gewählt haben. Unter „Bestellen“ legst du fest, was du beim Laden bestellst – das steht in der Bestellliste.</p>`;
+}
+
+// Anmerkungen der Gäste: Admin entscheidet, was an den Laden geht
+const nameOf = (pid) => data.participants.find((x) => x.id === pid)?.name || "?";
+const notesOf = (orderId) => (data.notes || []).filter((n) => n.order_id === orderId);
+function notesHtml(o) {
+  const notes = notesOf(o.id);
+  if (!notes.length) return "";
+  return `<div class="notes-box"><h3 class="serif">Anmerkungen der Gäste</h3>
+    ${notes.map((n) => `<label class="note-line"><input type="checkbox" class="no-print" data-fwd="${n.participant_id}" ${n.forward ? "checked" : ""}>
+      <span><b>${esc(nameOf(n.participant_id))}:</b> ${esc(n.note)}
+      <span class="cat-note">${n.forward ? "→ steht in der Bestellliste" : "nur für dich"}</span></span></label>`).join("")}
+    <p class="cat-note no-print" style="margin:6px 0 0">Haken = an den Laden weitergeben (erscheint als „Hinweise“ in der Bestellliste).</p></div>`;
 }
 
 // Bestellmengen ändern (Eingabe bestätigt mit Enter oder beim Verlassen des Felds)
 $("byProduct").onchange = async (e) => {
   const o = order(); if (!o) return;
   const t = e.target, val = Math.max(0, Math.round(+t.value || 0));
-  if (t.dataset.plan) {
+  if (t.dataset.fwd) {
+    await api.setNoteForward(t.dataset.fwd, o.id, t.checked);
+    await refresh();
+  } else if (t.dataset.plan) {
     const [pid, v] = t.dataset.plan.split("|");
     const l = planOf(o).find((x) => x.type === "item" && x.p.id === pid && x.v === v);
     await api.setPlan(o.id, pid, v, val === l?.suggested ? null : val);
@@ -414,7 +430,9 @@ function renderByPerson(items) {
       <span class="cat-note">${when ? `abgeschickt ${fmtWhen(when)}` : "noch nicht abgeschickt"}</span></span>
       <span>${its.length ? costTxt || '<span class="cat-note">Preis folgt</span>' : '<span class="cat-note">nichts gewählt</span>'}
       <button class="x no-print" data-del="${pp.id}">entfernen</button></span></div>
-      ${its.length ? `<ul>${its.map((x) => `<li>${x.qty}× ${esc(withVariant(x.p, x.variant))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}</li>`).join("")}</ul>` : ""}</div>`;
+      ${its.length ? `<ul>${its.map((x) => `<li>${x.qty}× ${esc(withVariant(x.p, x.variant))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}</li>`).join("")}</ul>` : ""}
+      ${(data.notes || []).filter((n) => n.participant_id === pp.id && (sel === ALL || n.order_id === sel))
+        .map((n) => `<p class="note-ro">📝 ${esc(n.note)}${sel === ALL ? ` <span class="cat-note">(${esc(order(n.order_id)?.title || "")})</span>` : ""}</p>`).join("")}</div>`;
   }).join("");
   $("byPerson").onclick = async (e) => {
     const b = e.target.closest("[data-del]"); if (!b) return;
@@ -430,6 +448,7 @@ function renderLog() {
     .filter((s) => s.changes.length);
   if (!entries.length) { $("byLog").innerHTML = `<div class="empty">Noch nichts abgeschickt.</div>`; return; }
   const line = (c) => {
+    if (c.type === "note") return `<li class="note-chg">📝 ${c.note ? `Anmerkung: „${esc(c.note)}“` : "Anmerkung gelöscht"}${sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "")})</span>` : ""}</li>`;
     const p = prod(c.product_id);
     const name = esc(p ? withVariant(p, c.variant || variantsOf(p)[0]) : c.product_id);
     const where = sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "gelöschte Bestellung")})</span>` : "";
@@ -444,6 +463,10 @@ function renderLog() {
   }).join("");
 }
 
+const fwdNotes = (o) => {
+  const n = notesOf(o.id).filter((x) => x.forward);
+  return n.length ? ["Hinweise:", ...n.map((x) => `– ${nameOf(x.participant_id)}: ${x.note}`)] : [];
+};
 // Text zum Durchgeben/Schicken an den Laden – je Bestellung ein Block, mit den Bestellmengen
 function orderText(o) {
   const lines = planOf(o).filter((l) => l.amount > 0);
@@ -457,7 +480,7 @@ function orderText(o) {
       ? [`${fmtKg(l.amount)} ${l.category} – Minis gemischt`, `   (gern u. a.: ${l.rows.map((r) => r.p.name).join(", ")})`]
       : [`${l.v === "mini" ? fmtKg(l.amount) : l.amount + "×"} ${withVariant(l.p, l.v)}${l.p.code ? ` [${l.p.code}]` : ""}`]),
       grams ? `(Minis gesamt ca. ${fmtKg(grams)})` : "", ""];
-  })).join("\n").trim();
+  })).concat(fwdNotes(o)).join("\n").trim();
 }
 $("copyList").onclick = () => {
   const txt = (sel === ALL ? project.orders : [order()]).map(orderText).filter(Boolean).join("\n\n――――――――――\n\n");
@@ -476,7 +499,7 @@ function renderProducts() {
   $("pChips").innerHTML = chipsHtml(products);
   $("pCatalog").innerHTML = sectionsHtml(products, (p) => `
     <article class="card admin ${p.active ? "" : "off"}" data-edit="${p.id}">
-      <div class="ph">${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">` : `<div class="soon">Bild folgt</div>`}
+      <div class="ph">${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">` : `<div class="soon">Bild folgt</div>`}${p.veggie ? `<span class="veg-badge">🌱 Vegetarisch</span>` : ""}
         ${p.code ? `<span class="code">${esc(p.code)}</span>` : ""}
         ${!p.active ? `<span class="flag">Ausgeblendet</span>` : p.coming_soon ? `<span class="flag soon-flag">Bald dabei</span>` : ""}</div>
       <div class="body"><div class="name">${esc(p.name)}</div>
@@ -500,6 +523,7 @@ function openProduct(p, defaults = {}) {
   $("pmShop").value = d.shop;
   $("pmKind").value = d.kind || "suess";
   $("pmCat").value = d.category || "";
+  $("pmVeggie").checked = !!d.veggie;
   $("pmMini").checked = !!d.has_mini;
   $("pmKg").value = d.mini_price_kg ?? "";
   $("pmWeight").value = d.mini_weight_g ?? 30;
@@ -564,7 +588,7 @@ $("pmForm").onsubmit = async (e) => {
       id, shop: $("pmShop").value, kind: $("pmKind").value, category: $("pmCat").value.trim(),
       name: $("pmName").value.trim(), code: $("pmCode").value.trim() || null, image, ...prices,
       sort: pEdit?.sort ?? Math.max(0, ...catalog.products.map((x) => x.sort)) + 1,
-      active: status !== "hidden", coming_soon: status === "soon",
+      active: status !== "hidden", coming_soon: status === "soon", veggie: $("pmVeggie").checked,
     });
     catalog = await loadCatalog({ all: true });
     pTab = $("pmShop").value + ":" + $("pmKind").value;
