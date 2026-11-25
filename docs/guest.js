@@ -6,6 +6,9 @@ const params = new URLSearchParams(location.search);
 const code = params.get("e") || (DEMO ? "demo" : "");
 const storeKey = "paradiso-guest-" + code;
 const draftKey = "paradiso-draft3-" + code;
+const lastKey = "paradiso-last-" + code;   // letzte abgeschickte Auswahl als Sicherung (falls die Anmeldung verloren geht)
+const isAuthError = (e) => /Nicht berechtigt/.test(e?.message || "");
+let lostName = null; // Name, falls die Anmeldung nicht mehr gilt (z. B. vom Gastgeber entfernt)
 
 let me = JSON.parse(localStorage.getItem(storeKey) || "null"); // {id, secret, name}
 let catalog, project, tabs, activeOrder, activeTab, submittedAt = null, busy = false;
@@ -37,10 +40,14 @@ async function init() {
   if (me) {
     try {
       await loadMine();
-      const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
-      if (saved) { draft = new Map(saved.items); draftNotes = new Map(saved.notes); }
+      restoreDraft();
       return showShop();
-    } catch { forget(); }
+    } catch (e) {
+      // Netzwerkfehler o. ä.: Anmeldung NICHT wegwerfen, nur Hinweis zeigen
+      if (!isAuthError(e)) return showNoLink("Verbindung fehlgeschlagen – bitte Seite neu laden.", "Hoppla");
+      // Anmeldung gilt nicht mehr: Auswahl retten, Namen vorschlagen
+      lostName = me.name; recoverSelection(); me = null; localStorage.removeItem(storeKey);
+    }
   }
   if (project.orders.every((o) => o.closed)) return showNoLink("Alle Bestellungen sind bereits geschlossen.", "Geschlossen");
   showJoin();
@@ -53,6 +60,19 @@ async function loadMine() {
   sentNotes = new Map((r.notes || []).map((n) => [nkey(n.order_id, n.product_id), n.note]));
   draftNotes = new Map(sentNotes);
   submittedAt = r.submitted_at;
+  localStorage.setItem(lastKey, JSON.stringify({ items: [...sent], notes: [...sentNotes] }));
+}
+function restoreDraft() {
+  const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
+  if (saved) { draft = new Map(saved.items); draftNotes = new Map(saved.notes); }
+}
+// Entwurf bzw. letzte abgeschickte Auswahl übernehmen – als neuer, noch nicht abgeschickter Stand.
+// Nur offene Bestellungen: In geschlossenen lässt sich nichts mehr neu abschicken.
+function recoverSelection() {
+  const saved = JSON.parse(localStorage.getItem(draftKey) || "null") || JSON.parse(localStorage.getItem(lastKey) || "null");
+  const open = ([k]) => order(k.split("|")[0]) && !order(k.split("|")[0]).closed;
+  sent = new Map(); sentNotes = new Map(); submittedAt = null;
+  draft = new Map((saved?.items || []).filter(open)); draftNotes = new Map((saved?.notes || []).filter(open));
 }
 
 function showNoLink(text, heading) {
@@ -64,6 +84,11 @@ function showNoLink(text, heading) {
 
 function showJoin() {
   $("join").classList.remove("hidden");
+  if (lostName) {
+    $("nameInput").value = lostName;
+    $("joinNote").textContent = "Deine Anmeldung gibt es nicht mehr – vielleicht hat der Gastgeber dich entfernt. Trag dich einfach neu ein: Deine Auswahl ist noch da und du kannst sie gleich wieder abschicken.";
+    $("joinNote").classList.remove("hidden");
+  }
   $("nameInput").focus();
   $("joinForm").onsubmit = async (ev) => {
     ev.preventDefault();
@@ -75,13 +100,18 @@ function showJoin() {
       me = { ...r, name };
       localStorage.setItem(storeKey, JSON.stringify(me));
       project = await api.guestProject(code); // jetzt mit dir in der Liste
+      persistDraft();
       $("join").classList.add("hidden");
       showShop();
+      if (lostName && dirty()) { lostName = null; openSheet(); }
     } catch (e) { $("joinError").textContent = e.message; }
   };
 }
 
-function forget() { me = null; localStorage.removeItem(storeKey); localStorage.removeItem(draftKey); sent.clear(); draft.clear(); sentNotes.clear(); draftNotes.clear(); }
+function forget() {
+  me = null; [storeKey, draftKey, lastKey].forEach((k) => localStorage.removeItem(k));
+  sent.clear(); draft.clear(); sentNotes.clear(); draftNotes.clear();
+}
 
 function showShop() {
   const who = $("who");
@@ -226,6 +256,7 @@ function change(orderId, id, v, d) {
   const k = key(orderId, id, v);
   const q = Math.max(0, Math.min(500, (draft.get(k) || 0) + d));
   q ? draft.set(k, q) : draft.delete(k);
+  $("reviewed").checked = false; // nach jeder Änderung neu bestätigen
   // Produkt ganz abgewählt → Notiz dazu fällt weg
   if (!variantsOf(prod(id)).some((x) => draft.get(key(orderId, id, x)))) { draftNotes.delete(nkey(orderId, id)); if (noteOpen === id) noteOpen = null; }
   persistDraft();
@@ -238,8 +269,9 @@ function change(orderId, id, v, d) {
 
 // ───────── Abschicken ─────────
 async function submit() {
-  if (busy || !dirty()) return;
+  if (busy || !dirty() || !$("reviewed").checked) return;
   busy = true; renderBar();
+  let rejoinNeeded = false;
   const before = new Set(changedKeys().map((k) => k.split("|")[0]).concat(notesChanged().map((o) => o.id)));
   try {
     const items = [...draft].map(([k, qty]) => ({ ...split(k), qty }));
@@ -252,10 +284,30 @@ async function submit() {
     const lost = project.orders.filter((o) => o.closed && before.has(o.id));
     toast(lost.length ? `„${lost.map((o) => o.title).join("“, „")}“ ist inzwischen geschlossen – dort wurde nichts geändert.`
       : "Abgeschickt ✓ – du kannst jederzeit ändern und erneut abschicken.", 4000);
-    noteOpen = null; renderInfo(); renderOrders(); renderCatalog();
+    noteOpen = null; $("reviewed").checked = false;
+    renderInfo(); renderOrders(); renderCatalog();
     if (!$("sheet").classList.contains("hidden")) renderSheet();
-  } catch (e) { toast("Abschicken fehlgeschlagen: " + e.message, 5000); }
-  finally { busy = false; renderBar(); }
+  } catch (e) {
+    if (isAuthError(e)) rejoinNeeded = true;
+    else toast("Abschicken fehlgeschlagen: " + e.message, 5000);
+  } finally { busy = false; renderBar(); }
+  if (rejoinNeeded) await rejoin();
+}
+
+// Anmeldung gibt es nicht mehr (z. B. vom Gastgeber entfernt): neu eintragen und Auswahl abschicken
+async function rejoin() {
+  const name = me.name;
+  if (!confirm(`Deine Anmeldung gibt es nicht mehr – vielleicht hat der Gastgeber dich entfernt.\n\nNeu eintragen als „${name}“ und deine Auswahl abschicken?`)) {
+    return toast("Nicht abgeschickt – deine Auswahl ist noch da.", 4000);
+  }
+  try {
+    const r = await api.guestJoin(code, name);
+    me = { ...r, name };
+    localStorage.setItem(storeKey, JSON.stringify(me));
+    sent = new Map(); sentNotes = new Map(); submittedAt = null;
+    persistDraft();
+    await submit();
+  } catch (e) { toast("Neu eintragen fehlgeschlagen: " + e.message, 5000); }
 }
 // Unten „Abschicken“ öffnet erst die Übersicht (prüfen + Anmerkung), dort „Jetzt abschicken“
 $("submitBtn").onclick = () => openSheet();
@@ -265,18 +317,20 @@ function renderBar() {
   const mine = [...draft].filter(([k]) => k.startsWith(activeOrder + "|"));
   const n = mine.reduce((a, [, q]) => a + q, 0);
   const label = project.orders.length > 1 ? `${order().title}: ` : "Deine Auswahl: ";
-  $("cartLabel").textContent = n ? `${label}${n} Stück · ${mine.length} Sorte${mine.length === 1 ? "" : "n"}` : "Noch nichts ausgewählt";
+  $("cartLabel").textContent = n ? `🧺 ${label}${n} Stück · ${mine.length} Sorte${mine.length === 1 ? "" : "n"}` : "🧺 Noch nichts ausgewählt";
   const d = dirty();
   $("savedLabel").textContent = busy ? "wird abgeschickt …" : d ? "Noch nicht abgeschickt"
     : submittedAt ? `Abgeschickt ✓ ${fmtWhen(submittedAt)}` : "";
   $("savedLabel").classList.toggle("warn", d && !busy);
   $("submitBtn").disabled = busy || !d;
   $("submitBtn").textContent = d ? "Abschicken" : submittedAt ? "Abgeschickt ✓" : "Abschicken";
-  $("sheetSubmit").disabled = busy || !d;
+  $("reviewRow").classList.toggle("hidden", !d);
+  $("sheetSubmit").disabled = busy || !d || !$("reviewed").checked;
   $("sheetSubmit").textContent = busy ? "Wird abgeschickt …" : d ? "Jetzt abschicken" : submittedAt ? "Abgeschickt ✓" : "Jetzt abschicken";
 }
 
 function openSheet() { renderSheet(); renderBar(); $("sheet").classList.remove("hidden"); $("sheetBg").classList.remove("hidden"); }
+$("reviewed").onchange = renderBar;
 $("cartBtn").onclick = openSheet;
 $("sheetClose").onclick = $("sheetBg").onclick = () => { $("sheet").classList.add("hidden"); $("sheetBg").classList.add("hidden"); };
 

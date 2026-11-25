@@ -33,6 +33,14 @@ cd docs && python3 -m http.server 8000
 - Gäste: http://localhost:8000/index.html?e=demo
 - Admin: http://localhost:8000/admin.html
 
+## Tests
+
+```bash
+cd tests && npm install && npm test
+```
+Prüft das Datenbank-Schema in einem echten Postgres (PGlite) inkl. Rechten und spielt Gast- und Admin-Seite im
+Demo-Modus durch (Abschicken, Ändern, Notizen, entfernte Gäste, geschlossene Bestellungen, Produkt-Editor …).
+
 ## Live schalten
 
 ### 1. Supabase

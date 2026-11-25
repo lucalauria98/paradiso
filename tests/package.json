@@ -1,0 +1,12 @@
+{
+  "name": "paradiso-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node sql.test.mjs && node demo.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0",
+    "linkedom": "^0.18.0"
+  }
+}

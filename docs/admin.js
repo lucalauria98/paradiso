@@ -448,7 +448,7 @@ function renderByPerson(items) {
   $("byPerson").onclick = async (e) => {
     const b = e.target.closest("[data-del]"); if (!b) return;
     const name = data.participants.find((p) => p.id === b.dataset.del)?.name;
-    if (!confirm(`${name} samt Auswahl in allen Bestellungen entfernen?`)) return;
+    if (!confirm(`${name} samt Auswahl in allen Bestellungen entfernen?\n\n(${name} kann sich über den Einladungslink jederzeit neu eintragen.)`)) return;
     await api.deleteParticipant(b.dataset.del); await refresh();
   };
 }

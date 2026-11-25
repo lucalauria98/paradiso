@@ -38,6 +38,11 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 - Antipasti-Laden: Bilder nach `docs/img/antipasti/`, Einträge mit `"shop":"antipasti"` in catalog.json
 - Später für den Chef: echte Namen/Preise, Produktfotos aus Fotobox, Abholtermin pro Bestellung
 
+## Tests (vor jedem Push laufen lassen)
+- `cd tests && npm install && npm test` → `sql.test.mjs` (schema.sql + seed.sql in echtem Postgres via PGlite, Supabase-Rollen/RLS nachgebaut, Gast-Funktionen + Rechte) und `demo.test.mjs` (Gast- und Admin-Seite im Demo-Modus mit linkedom durchgeklickt)
+- Gast-Fälle: Abschicken nur mit Häkchen „überprüft“; vom Admin entfernt → Seite bietet „neu eintragen als <Name>“ an und schickt die gerettete Auswahl (nur offene Bestellungen) neu ab; Netzwerkfehler löscht die Anmeldung NICHT
+- DB-Änderungen live: SQL-Update zusammenstellen (einmalige Migration als idempotenter DO-Block + komplettes schema.sql), mit pglast prüfen, Nutzer führt es im SQL Editor aus, DANACH pushen
+
 ## Vorgaben
 - Datenschutz & Open Source wichtig, keine unnötigen Drittanbieter
 - Einfach halten (kein Framework/Build), mobil zuerst, Deutsch

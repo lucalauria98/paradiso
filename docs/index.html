@@ -27,6 +27,7 @@
   <!-- Name eingeben -->
   <section id="join" class="panel hidden">
     <h2>Wie heißt du?</h2>
+    <p id="joinNote" class="note hidden" style="margin:0 0 14px"></p>
     <p>Gib einmal deinen Namen ein, such dir für jede Bestellung aus, was du gern hättest, und schick deine Auswahl ab. Ändern geht jederzeit.</p>
     <form id="joinForm">
       <input class="field" id="nameInput" maxlength="60" placeholder="z. B. Tante Maria" autocomplete="given-name" required>
@@ -52,7 +53,7 @@
 
 <div class="bar hidden" id="bar">
   <div class="bar-in">
-    <button class="cart" id="cartBtn"><span id="cartLabel">Deine Auswahl</span><small id="savedLabel"></small></button>
+    <button class="cart" id="cartBtn" aria-label="Deine Auswahl ansehen"><span id="cartLabel">Deine Auswahl</span><small id="savedLabel"></small><i class="chev">›</i></button>
     <button class="btn" id="submitBtn">Abschicken</button>
   </div>
 </div>
@@ -62,9 +63,10 @@
   <h2>Deine Auswahl <button id="sheetClose" aria-label="Schließen">×</button></h2>
   <p class="cat-note" style="margin:-6px 0 6px">Prüf kurz deine Auswahl. Bei Wünschen (z. B. „ohne Erbsen“) einfach eine Anmerkung dazuschreiben.</p>
   <div id="sheetBody"></div>
+  <div id="sheetTotal" class="sheet-total"></div>
+  <label class="review hidden" id="reviewRow"><input type="checkbox" id="reviewed"> <span><b>Ich habe meine Bestellung überprüft</b> – Mengen, Größen (Mini/Normal) und Notizen stimmen.</span></label>
   <div class="sheet-foot">
-    <div id="sheetTotal"></div>
-    <button class="btn" id="sheetSubmit">Abschicken</button>
+    <button class="btn" id="sheetSubmit" disabled>Jetzt abschicken</button>
   </div>
   <p class="cat-note" style="margin-top:14px">Du kannst deine Auswahl jederzeit über denselben Link ändern und erneut abschicken, solange die jeweilige Bestellung offen ist. Preise sind Schätzungen.</p>
 </section>
