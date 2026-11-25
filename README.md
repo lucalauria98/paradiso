@@ -93,6 +93,6 @@ Im Admin „+ Neues Produkt“ → Laden „Antipasti-Laden“ wählen. Sobald d
 
 ## Offen
 - Echte Produktnamen + Preise mit dem Chef klären, Fotos aus der Fotobox
-- Arancini & Calzone: Bild fehlt (als „Bild folgt" markiert)
+- Arancini & Calzone: bestellbar, Foto fehlt noch (im Admin hochladen)
 - `frittiert` (V1-2.9) und Gebäck-Muschel (C-1.3): Namen klären
 - Weitere Süß-Fotos (IMG_2821–2829) noch nicht eingearbeitet

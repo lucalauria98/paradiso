@@ -316,7 +316,7 @@
    "piece_price_min": 3,
    "piece_price_max": 6,
    "sort": 17,
-   "coming_soon": true
+   "coming_soon": false
   },
   {
    "id": "calzone",
@@ -333,7 +333,7 @@
    "piece_price_min": 3,
    "piece_price_max": 6,
    "sort": 18,
-   "coming_soon": true
+   "coming_soon": false
   },
   {
    "id": "zucker-krapfen",

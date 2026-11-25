@@ -30,7 +30,7 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 ## Offene Punkte
 - Optik überarbeiten (Paradiso-Website als Vorlage, Link kommt vom Nutzer)
 - Supabase Free-Plan pausiert nach ~1 Woche Inaktivität → vor Einsatz prüfen
-- Arancini & Calzone: noch kein Bild (coming_soon)
+- Arancini & Calzone: bestellbar, aber noch ohne Foto (Nutzer reicht eins nach → im Admin hochladen)
 - Namen klären: V1-2.9 (frittiertes Teil), C-1.3 (Gebäck-Muschel)
 - 9 weitere Süß-Fotos in `Bilder_Süßkram/IMG_2821–2829` noch nicht eingearbeitet
 - Antipasti-Laden: Bilder nach `docs/img/antipasti/`, Einträge mit `"shop":"antipasti"` in catalog.json
