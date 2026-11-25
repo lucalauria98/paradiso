@@ -38,15 +38,17 @@ create table if not exists products (
   name          text not null,
   kind          text not null default 'suess' check (kind in ('herzhaft','suess')),
   image         text,                          -- relativer Pfad auf GitHub Pages oder Storage-URL
-  -- Zwei mögliche Größen: Mini (nach Gewicht) und Normal (pro Stück). null = Größe gibt es nicht.
+  -- Zwei mögliche Größen: Mini (nach Gewicht) und Normal (pro Stück). Preis null = „Preis folgt“.
+  has_mini        boolean not null default false,  -- gibt es als Mini
+  has_piece       boolean not null default false,  -- gibt es in normaler Größe
   mini_price_kg   numeric(6,2),                -- Mini: € pro kg
-  mini_weight_g   int,                         -- Mini: geschätztes Gewicht pro Stück
+  mini_weight_g   int,                         -- Mini: geschätztes Gewicht pro Stück (für Gramm-Vorschlag)
   piece_price_min numeric(6,2),                -- Normal: € pro Stück von …
   piece_price_max numeric(6,2),                --                    … bis
   sort          int not null default 0,
   coming_soon   boolean not null default false,
   active        boolean not null default true,
-  constraint products_variant_check check (mini_price_kg is not null or piece_price_min is not null)
+  constraint products_size_check check (has_mini or has_piece)
 );
 
 -- ───────────── Projekte & Bestellungen ─────────────
@@ -262,8 +264,8 @@ begin
   select pr.name into v_bad from _want w join products pr on pr.id = w.product_id
     left join _cur c on c.order_id = w.order_id and c.product_id = w.product_id and c.variant = w.variant
     where (not pr.active or pr.coming_soon
-           or (w.variant = 'mini' and pr.mini_price_kg is null)
-           or (w.variant = 'stk' and pr.piece_price_min is null))
+           or (w.variant = 'mini' and not pr.has_mini)
+           or (w.variant = 'stk' and not pr.has_piece))
       and (c.qty is null or w.qty > c.qty) limit 1;
   if v_bad is not null then raise exception 'Nicht bestellbar: %', v_bad; end if;
 

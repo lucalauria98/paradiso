@@ -1,5 +1,5 @@
-import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtRange, lineCost, variantsOf, VARIANTS, variantLabel } from "./api.js";
-import { productTabs, inTab, chipsHtml, sectionsHtml, piecePrice, infoHtml, variantHead } from "./ui.js";
+import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtSpan, stkCost, priceText, variantsOf, VARIANTS, variantLabel } from "./api.js";
+import { productTabs, inTab, chipsHtml, sectionsHtml, infoHtml, variantHead } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -227,21 +227,23 @@ $("sheetClose").onclick = $("sheetBg").onclick = () => { $("sheet").classList.ad
 // Übersicht über alle Bestellungen des Projekts
 function renderSheet() {
   const multiShop = new Set(catalog.products.map((p) => p.shop)).size > 1;
-  let total = [0, 0];
+  let total = [0, 0], minis = 0, tbd = 0;
   const html = project.orders.map((o) => {
     const list = catalog.products.flatMap((p) => variantsOf(p).filter((v) => draft.get(key(o.id, p.id, v))).map((v) => ({ p, v })));
     if (!list.length) return "";
     return `<div class="shop-head">${esc(o.title)}${o.pickup_at ? " · " + esc(fmtPickup(o.pickup_at)) : ""}${o.closed ? " · geschlossen" : ""}</div>` + list.map(({ p, v }) => {
       const q = draft.get(key(o.id, p.id, v));
-      const c = lineCost(p, q, v); total = [total[0] + c[0], total[1] + c[1]];
+      const c = v === "stk" ? stkCost(p, q) : null;
+      if (c) total = [total[0] + c[0], total[1] + c[1]]; else if (v === "mini") minis += q; else tbd += q;
       const size = variantLabel(p, v);
       return `<div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
-        <div class="grow">${esc(p.name)}${size ? ` <span class="size">${size}</span>` : ""}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name + " · " : "")}${piecePrice(p, v)} pro Stück</small></div>
+        <div class="grow">${esc(p.name)}${size ? ` <span class="size">${size}</span>` : ""}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name + " · " : "")}${priceText(p, v)}</small></div>
         ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, v, q)}</div>`;
     }).join("");
   }).join("");
   $("sheetBody").innerHTML = html || `<div class="empty">Noch nichts ausgewählt.<br>Tipp auf „+ Hinzufügen" bei einem Produkt.</div>`;
-  $("sheetTotal").innerHTML = html ? `Geschätzt <b>${fmtRange(total)}</b>` : "";
+  const parts = [total[1] ? `Normale Teile <b>${fmtSpan(total)}</b>` : "", minis ? `${minis} Minis nach Gewicht` : "", tbd ? `${tbd} Teile, Preis folgt` : ""].filter(Boolean);
+  $("sheetTotal").innerHTML = html ? parts.join(" · ") : "";
   $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.order, b.dataset.id, b.dataset.v, +b.dataset.d); };
 }
 

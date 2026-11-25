@@ -80,6 +80,7 @@ img { display: block; }
 .card .variant + .variant { border-top: 1px dashed var(--line); padding-top: 8px; }
 .card .v-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 13px; color: var(--muted); }
 .card .v-head b { color: var(--ink); }
+.price.tbd { font-style: italic; opacity: .8; }
 .card .v-head b { font-size: 13px; }
 .card .variant .add { padding: 7px; font-size: 14px; }
 .card .variant .stepper button { width: 32px; height: 32px; font-size: 18px; }

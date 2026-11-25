@@ -81,10 +81,12 @@ Gäste greifen nie direkt auf Tabellen zu, nur über die Funktionen `guest_*` (g
 - **Supabase ist ab jetzt die Quelle der Wahrheit** für Produkte. `catalog.json` dient nur noch dem Demo-Modus
   und der Erstbefüllung; `seed.sql` legt nur fehlende Produkte an und überschreibt keine Änderungen aus dem Admin.
   (`python3 tools/gen_seed.py --overwrite` erzeugt bei Bedarf eine Version, die alles überschreibt.)
-- **Zwei Größen pro Produkt:** *Mini* (nach Gewicht, €/kg + geschätztes Stückgewicht) und/oder *Normal* (pro Stück, Spanne
-  von–bis). Gäste wählen die Menge je Größe; Bestellliste und Kosten trennen „Calzone (Mini)“ und „Calzone“.
-- Preise sind aktuell Schätzungen: Minis **18 €/kg** (Stückgewicht: herzhaft 45 g, süß 30 g, Kekse 12 g);
-  normale Größe **3–6 €/Stück** (Herzhaftes, Cannoli/Törtchen, Cornetti). Kekse nur nach Gewicht.
+- **Zwei Größen pro Produkt:** *Mini* (nach Gewicht, €/kg) und/oder *Normal* (pro Stück, von–bis). Leeres Preisfeld =
+  „Preis folgt“ – trotzdem bestellbar. Gäste wählen nur Größe + Stückzahl.
+- **Bestellplanung (Admin, pro Bestellung):** Spalte „Bestellen“ – Minis in Gramm (Vorschlag aus den Wünschen, auf
+  100 g aufgerundet), normale Teile in Stück, optional „Minis gemischt“ je Kategorie, Endbetrag laut Bon.
+  Bestellliste und Kostenschätzung nutzen diese Mengen.
+- Bekannte Preise: herzhafte Minis **18 €/kg**, herzhaft normal **ca. 3–6 €/Stück**. Süßes: Preis folgt.
 
 ## Antipasti-Laden ergänzen
 Im Admin „+ Neues Produkt“ → Laden „Antipasti-Laden“ wählen. Sobald dort ein Produkt existiert, erscheint für Gäste ein eigener Reiter.

@@ -18,25 +18,32 @@ const dt = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", 
 export const fmtPickup = (iso) => (iso ? dt.format(new Date(iso)) + " Uhr" : "");
 const dtShort = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
 export const fmtWhen = (iso) => (iso ? dtShort.format(new Date(iso)) : "");
-// ───────── Größen ─────────
+// ───────── Größen & Preise ─────────
 // Ein Produkt gibt es als Mini (nach Gewicht, €/kg) und/oder Normal (pro Stück, Spanne von–bis).
+// has_mini/has_piece = Größe gibt es; Preis null = „Preis folgt“ (noch unbekannt).
 export const VARIANTS = { mini: "Mini", stk: "Normal" };
-export const variantsOf = (p) => ["mini", "stk"].filter((v) => (v === "mini" ? p.mini_price_kg : p.piece_price_min) != null);
+export const variantsOf = (p) => ["mini", "stk"].filter((v) => (v === "mini" ? p.has_mini : p.has_piece));
 // Größe nur nennen, wenn es das Produkt in beiden Größen gibt („Calzone (Mini)“ vs. „Cantucci“)
 export const variantLabel = (p, v) => (variantsOf(p).length > 1 ? VARIANTS[v] : "");
 export const withVariant = (p, v) => p.name + (variantLabel(p, v) ? ` (${variantLabel(p, v)})` : "");
-// Preis für ein Stück → [min, max] in €
-export function pieceCost(p, v) {
-  if (v === "mini") { const c = ((p.mini_weight_g || 0) / 1000) * (p.mini_price_kg || 0); return [c, c]; }
-  return [p.piece_price_min || 0, p.piece_price_max ?? p.piece_price_min ?? 0];
+export const priceKnown = (p, v) => (v === "mini" ? p.mini_price_kg != null : p.piece_price_min != null);
+const euro = (n) => fmtEur(n).replace(",00", "");
+// Kurze Spanne für Gäste: „ca. 3–6 €“ bzw. „ca. 5,50 €“
+export const fmtSpan = ([a, b]) => (Math.abs(a - b) < 0.005 ? `ca. ${euro(a)}` : `ca. ${euro(a).replace(/\s?€/, "")}–${euro(b)}`);
+// Preis als Text, ohne Cent-Schätzungen für Minis: „18 €/kg“, „ca. 3–6 €“, „5,50 €“ oder „Preis folgt“
+export function priceText(p, v) {
+  if (!priceKnown(p, v)) return "Preis folgt";
+  if (v === "mini") return `${euro(p.mini_price_kg)}/kg`;
+  const a = p.piece_price_min, b = p.piece_price_max ?? a;
+  return a === b ? euro(a) : `ca. ${String(a).replace(".", ",")}–${String(b).replace(".", ",")} €`;
 }
-export const lineCost = (p, qty, v) => pieceCost(p, v).map((x) => x * qty);
+// Admin: Preis + Stückgewicht der Minis (fürs Umrechnen in Gramm)
+export const priceLabel = (p, v) => (v === "mini" ? `${priceText(p, v)} · ca. ${p.mini_weight_g || "?"} g/Stück` : priceText(p, v) + (priceKnown(p, v) ? " pro Stück" : ""));
+// Kosten [min, max] in € – null, wenn der Preis noch nicht bekannt ist
+export function stkCost(p, qty) { return priceKnown(p, "stk") ? [qty * p.piece_price_min, qty * (p.piece_price_max ?? p.piece_price_min)] : null; }
+export function gramCost(p, grams, kgPrice = p.mini_price_kg) { return kgPrice != null ? Array(2).fill((grams / 1000) * kgPrice) : null; }
 export const lineWeight = (p, qty, v) => (v === "mini" ? qty * (p.mini_weight_g || 0) : 0);
-export function priceLabel(p, v) {
-  if (v === "mini") return `${fmtEur(p.mini_price_kg)}/kg · ca. ${p.mini_weight_g} g/Stück`;
-  const [a, b] = pieceCost(p, "stk");
-  return Math.abs(a - b) < 0.005 ? `${fmtEur(a)}/Stück` : `ca. ${a}–${b} €/Stück`;
-}
+
 // Bestellungen nach Abholtermin (ohne Termin ans Ende), dann nach Anlage
 const byPickup = (a, b) => (a.pickup_at || "~").localeCompare(b.pickup_at || "~") || a.created_at.localeCompare(b.created_at);
 
@@ -45,6 +52,7 @@ const byPickup = (a, b) => (a.pickup_at || "~").localeCompare(b.pickup_at || "~"
 const catalogCache = {};
 const num = (v) => (v == null || v === "" ? null : +v);
 const normProduct = (x) => ({ active: true, coming_soon: false, kind: "suess", ...x, shop: x.shop_id ?? x.shop,
+  has_mini: !!x.has_mini, has_piece: !!x.has_piece,
   mini_price_kg: num(x.mini_price_kg), mini_weight_g: num(x.mini_weight_g),
   piece_price_min: num(x.piece_price_min), piece_price_max: num(x.piece_price_max) });
 export async function loadCatalog({ all = false } = {}) {
@@ -82,7 +90,7 @@ const must = ({ data, error }) => {
 };
 const rpc = async (fn, args) => must(await (await client()).rpc(fn, args));
 const table = async (t) => (await client()).from(t);
-const PRODUCT_COLS = ["id", "shop_id", "code", "category", "kind", "name", "image", "mini_price_kg", "mini_weight_g", "piece_price_min", "piece_price_max", "sort", "coming_soon", "active"];
+const PRODUCT_COLS = ["id", "shop_id", "code", "category", "kind", "name", "image", "has_mini", "has_piece", "mini_price_kg", "mini_weight_g", "piece_price_min", "piece_price_max", "sort", "coming_soon", "active"];
 
 const live = {
   // Gäste (ohne Login, nur über die guest_*-Funktionen)
@@ -154,7 +162,7 @@ const live = {
 
 // ───────── Demo (localStorage) ─────────
 const KEY = "paradiso-demo-v5";
-const PKEY = "paradiso-demo-products-v2"; // im Admin geänderte/neue Produkte
+const PKEY = "paradiso-demo-products-v3"; // im Admin geänderte/neue Produkte
 const read = () => JSON.parse(localStorage.getItem(KEY) || '{"projects":[],"orders":[],"participants":[],"items":[],"submissions":[],"plans":[]}');
 const write = (db) => localStorage.setItem(KEY, JSON.stringify(db));
 const uid = () => crypto.randomUUID();
