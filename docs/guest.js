@@ -1,38 +1,55 @@
-import { api, DEMO, loadCatalog, esc } from "./api.js";
+import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtRange, lineCost } from "./api.js";
+import { productTabs, inTab, chipsHtml, sectionsHtml, piecePrice, infoHtml } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const code = params.get("e") || (DEMO ? "demo" : "");
 const storeKey = "paradiso-guest-" + code;
+const draftKey = "paradiso-draft-" + code;
 
 let me = JSON.parse(localStorage.getItem(storeKey) || "null"); // {id, secret, name}
-let catalog, event, activeShop;
-const qty = new Map(); // product_id → Menge
-const timers = new Map();
-
+let catalog, project, tabs, activeOrder, activeTab, submittedAt = null, busy = false;
+// Abgeschickter Stand (wie beim Admin) und Entwurf im Browser: "bestellung|produkt" → Menge
+let sent = new Map(), draft = new Map();
+const key = (orderId, productId) => orderId + "|" + productId;
+const order = (id = activeOrder) => project.orders.find((o) => o.id === id);
+const prod = (id) => catalog.products.find((p) => p.id === id);
 
 if (DEMO) $("demo").classList.remove("hidden");
 init().catch((e) => showNoLink(e.message));
 
 async function init() {
   if (!code) return showNoLink();
-  [catalog, event] = await Promise.all([loadCatalog(), api.guestEvent(code)]);
-  if (!event) return showNoLink("Dieser Einladungslink ist ungültig oder abgelaufen. Frag beim Gastgeber nach einem neuen Link.");
-  $("title").textContent = event.title;
-  document.title = event.title + " · Bestellung";
-  activeShop = catalog.shops[0].id;
+  [catalog, project] = await Promise.all([loadCatalog(), api.guestProject(code)]);
+  if (!project) return showNoLink("Dieser Einladungslink ist ungültig oder abgelaufen. Frag beim Gastgeber nach einem neuen Link.");
+  $("title").textContent = project.title;
+  document.title = project.title + " · Bestellung";
+  tabs = productTabs(catalog);
+  activeTab = tabs[0]?.id;
+  if (!project.orders.length) return showNoLink("Hier ist noch keine Bestellung angelegt. Schau später nochmal rein.", "Noch nichts offen");
+  activeOrder = (project.orders.find((o) => !o.closed) || project.orders[0]).id;
   if (me) {
     try {
-      (await api.guestItems(me.id, me.secret)).forEach((i) => qty.set(i.product_id, i.qty));
+      await loadMine();
+      const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
+      if (saved) draft = new Map(saved);
       return showShop();
     } catch { forget(); }
   }
-  if (event.closed) return showNoLink("Die Bestellung ist bereits geschlossen.");
+  if (project.orders.every((o) => o.closed)) return showNoLink("Alle Bestellungen sind bereits geschlossen.", "Geschlossen");
   showJoin();
 }
 
-function showNoLink(text) {
-  $("title").textContent = "Café Paradiso";
+async function loadMine() {
+  const r = await api.guestItems(me.id, me.secret);
+  sent = new Map(r.items.map((i) => [key(i.order_id, i.product_id), i.qty]));
+  draft = new Map(sent);
+  submittedAt = r.submitted_at;
+}
+
+function showNoLink(text, heading) {
+  if (!project) $("title").textContent = "Café Paradiso";
+  if (heading) $("nolink").querySelector("h2").textContent = heading;
   if (text) $("nolinkText").textContent = text;
   $("nolink").classList.remove("hidden");
 }
@@ -49,127 +66,179 @@ function showJoin() {
       const r = await api.guestJoin(code, name);
       me = { ...r, name };
       localStorage.setItem(storeKey, JSON.stringify(me));
+      project = await api.guestProject(code); // jetzt mit dir in der Liste
       $("join").classList.add("hidden");
       showShop();
     } catch (e) { $("joinError").textContent = e.message; }
   };
 }
 
-function forget() { me = null; localStorage.removeItem(storeKey); qty.clear(); }
+function forget() { me = null; localStorage.removeItem(storeKey); localStorage.removeItem(draftKey); sent.clear(); draft.clear(); }
 
 function showShop() {
   const who = $("who");
   who.innerHTML = `Du bestellst als <b>${esc(me.name)}</b><button id="notMe">Nicht du?</button>`;
   who.classList.remove("hidden");
   $("notMe").onclick = () => {
-    if (!confirm("Abmelden? Deine bisherige Auswahl bleibt gespeichert, du startest aber mit einem neuen Namen.")) return;
+    if (!confirm("Abmelden? Deine abgeschickte Auswahl bleibt erhalten, du startest aber mit einem neuen Namen.")) return;
     forget(); location.reload();
   };
   $("shopView").classList.remove("hidden");
   $("bar").classList.remove("hidden");
-  if (event.closed) toast("Die Bestellung ist geschlossen – Änderungen sind nicht mehr möglich.", 5000);
-  renderTabs(); renderCatalog(); renderBar();
+  renderInfo(); renderOrders(); renderTabs(); renderCatalog(); renderBar();
 }
 
+const renderInfo = () => { $("info").innerHTML = infoHtml({ note: project.note, members: project.members, products: catalog.products }); };
+
+// ───────── Entwurf vs. abgeschickt ─────────
+const isOpen = (k) => !order(k.split("|")[0])?.closed;
+function changedKeys() {
+  return [...new Set([...sent.keys(), ...draft.keys()])].filter((k) => isOpen(k) && (sent.get(k) || 0) !== (draft.get(k) || 0));
+}
+const dirty = () => changedKeys().length > 0;
+function persistDraft() { dirty() ? localStorage.setItem(draftKey, JSON.stringify([...draft])) : localStorage.removeItem(draftKey); }
+addEventListener("beforeunload", (e) => { if (me && dirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+// ───────── Bestellungen (z. B. Kaffee Heiligabend / 1. Feiertag) ─────────
+const countFor = (orderId) => [...draft].reduce((n, [k, q]) => (k.startsWith(orderId + "|") ? n + q : n), 0);
+
+function renderOrders() {
+  const o = order();
+  const many = project.orders.length > 1;
+  $("orderTabs").classList.toggle("hidden", !many);
+  if (many) {
+    $("orderTabs").innerHTML = project.orders.map((x) => {
+      const n = countFor(x.id);
+      return `<button data-order="${x.id}" class="${x.id === activeOrder ? "on" : ""}">
+        <b>${esc(x.title)}</b><small>${x.closed ? "geschlossen" : esc(fmtPickup(x.pickup_at)) || "&nbsp;"}</small>
+        ${n ? `<span class="cnt">${n}</span>` : ""}</button>`;
+    }).join("");
+    $("orderTabs").onclick = (e) => {
+      const b = e.target.closest("button[data-order]"); if (!b) return;
+      activeOrder = b.dataset.order; renderOrders(); renderCatalog(); renderBar();
+    };
+  }
+  const when = o.pickup_at ? `Abholung ${fmtPickup(o.pickup_at)}` : "";
+  $("orderInfo").innerHTML = o.closed
+    ? `<b>${esc(o.title)}</b> ist geschlossen – Änderungen sind nicht mehr möglich.`
+    : many ? esc(when) : `<b>${esc(o.title)}</b>${when ? " · " + esc(when) : ""}`;
+  $("orderInfo").classList.toggle("closed", o.closed);
+}
+
+// ───────── Herzhaft / Süß ─────────
 function renderTabs() {
-  $("tabs").innerHTML = catalog.shops.map((s) =>
-    `<button data-shop="${s.id}" class="${s.id === activeShop ? "on" : ""}">${esc(s.name)}</button>`).join("");
+  $("tabs").classList.toggle("hidden", tabs.length < 2);
+  $("tabs").innerHTML = tabs.map((t) => `<button data-tab="${t.id}" class="${t.id === activeTab ? "on" : ""}">${esc(t.label)}</button>`).join("");
   $("tabs").onclick = (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    activeShop = b.dataset.shop; renderTabs(); renderCatalog(); scrollTo({ top: 0 });
+    const b = e.target.closest("button[data-tab]"); if (!b) return;
+    activeTab = b.dataset.tab; renderTabs(); renderCatalog();
+    $("tabs").scrollIntoView?.({ block: "start" });
   };
 }
 
-const catId = (c) => "cat-" + c.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-
 function renderCatalog() {
-  const products = catalog.products.filter((p) => p.shop === activeShop);
-  const cats = [...new Set(products.map((p) => p.category))];
-  $("chips").innerHTML = cats.map((c) => `<a href="#${catId(c)}">${esc(c)}</a>`).join("");
-  if (!products.length) {
-    $("catalog").innerHTML = `<div class="empty"><h3 class="serif">Kommt bald</h3>Hier kommen bald die Produkte dieses Ladens rein.</div>`;
-    return;
-  }
-  $("catalog").innerHTML = cats.map((c) => {
-    const list = products.filter((p) => p.category === c);
-    const note = list[0].unit === "kg" ? "Mini-Varianten · Menge in Stück" : "Menge in Stück";
-    return `<h2 class="cat-title" id="${catId(c)}">${esc(c)}</h2><p class="cat-note">${note}</p>
-      <div class="grid">${list.map(cardHtml).join("")}</div>`;
-  }).join("");
+  const products = catalog.products.filter(inTab(activeTab));
+  $("chips").innerHTML = chipsHtml(products);
+  $("catalog").innerHTML = sectionsHtml(products, cardHtml);
   $("catalog").onclick = onCatalogClick;
 }
 
 function cardHtml(p) {
-  const q = qty.get(p.id) || 0;
+  const q = draft.get(key(activeOrder, p.id)) || 0;
   const img = p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" data-zoom="${p.id}">`
     : `<div class="soon">Bild folgt</div>`;
-  const ctrl = p.coming_soon ? `<div class="meta">Noch nicht bestellbar</div>`
-    : event.closed ? `<div class="meta">${q ? q + " Stück gewählt" : ""}</div>`
-    : q ? stepperHtml(p.id, q) : `<button class="add" data-id="${p.id}" data-d="1">+ Hinzufügen</button>`;
+  const ctrl = p.coming_soon ? `<div class="meta">Bald dabei – noch nicht bestellbar</div>`
+    : order().closed ? `<div class="meta">${q ? q + " Stück gewählt" : ""}</div>`
+    : q ? stepperHtml(activeOrder, p.id, q) : `<button class="add" data-order="${activeOrder}" data-id="${p.id}" data-d="1">+ Hinzufügen</button>`;
   return `<article class="card ${q ? "picked" : ""}" id="card-${p.id}">
-    <div class="ph">${img}${p.code ? `<span class="code">${esc(p.code)}</span>` : ""}${q ? `<span class="badge">${q}</span>` : ""}</div>
-    <div class="body"><div class="name">${esc(p.name)}</div><div class="foot">${ctrl}</div></div></article>`;
+    <div class="ph">${img}${q ? `<span class="badge">${q}</span>` : ""}</div>
+    <div class="body"><div class="name">${esc(p.name)}</div>${p.coming_soon ? "" : `<div class="price">${piecePrice(p)}</div>`}<div class="foot">${ctrl}</div></div></article>`;
 }
 
-const stepperHtml = (id, q) =>
-  `<div class="stepper"><button data-id="${id}" data-d="-1" aria-label="weniger">−</button><span class="q">${q}</span><button data-id="${id}" data-d="1" aria-label="mehr">+</button></div>`;
+const stepperHtml = (orderId, id, q) =>
+  `<div class="stepper"><button data-order="${orderId}" data-id="${id}" data-d="-1" aria-label="weniger">−</button><span class="q">${q}</span><button data-order="${orderId}" data-id="${id}" data-d="1" aria-label="mehr">+</button></div>`;
 
 function onCatalogClick(e) {
   const z = e.target.closest("[data-zoom]");
   if (z) return zoom(z.dataset.zoom);
   const b = e.target.closest("button[data-id]");
-  if (b) change(b.dataset.id, +b.dataset.d);
+  if (b) change(b.dataset.order, b.dataset.id, +b.dataset.d);
 }
 
-function change(id, d) {
-  if (event.closed) return;
-  const q = Math.max(0, Math.min(500, (qty.get(id) || 0) + d));
-  q ? qty.set(id, q) : qty.delete(id);
+function change(orderId, id, d) {
+  if (order(orderId).closed) return;
+  const k = key(orderId, id);
+  const q = Math.max(0, Math.min(500, (draft.get(k) || 0) + d));
+  q ? draft.set(k, q) : draft.delete(k);
+  persistDraft();
   const card = $("card-" + id);
-  if (card) card.outerHTML = cardHtml(catalog.products.find((p) => p.id === id));
+  if (card && orderId === activeOrder) card.outerHTML = cardHtml(prod(id));
   if (!$("sheet").classList.contains("hidden")) renderSheet();
+  if (project.orders.length > 1) renderOrders();
   renderBar();
-  save(id, q);
 }
 
-// Mehrere schnelle Klicks auf dasselbe Produkt = ein Speichervorgang
-function save(id, q) {
-  clearTimeout(timers.get(id));
-  const t = setTimeout(async () => {
-    try { await api.guestSetItem(me.id, me.secret, id, q); }
-    catch (e) { toast("Speichern fehlgeschlagen: " + e.message, 4000); }
-    finally { if (timers.get(id) === t) timers.delete(id); renderSaved(); }
-  }, 400);
-  timers.set(id, t);
-  renderSaved();
+// ───────── Abschicken ─────────
+async function submit() {
+  if (busy || !dirty()) return;
+  busy = true; renderBar();
+  const before = new Set(changedKeys().map((k) => k.split("|")[0]));
+  try {
+    const items = [...draft].map(([k, qty]) => ({ order_id: k.split("|")[0], product_id: k.split("|")[1], qty }));
+    await api.guestSubmit(me.id, me.secret, items);
+    project = await api.guestProject(code);
+    await loadMine();
+    localStorage.removeItem(draftKey);
+    const lost = project.orders.filter((o) => o.closed && before.has(o.id));
+    toast(lost.length ? `„${lost.map((o) => o.title).join("“, „")}“ ist inzwischen geschlossen – dort wurde nichts geändert.`
+      : "Abgeschickt ✓ – du kannst jederzeit ändern und erneut abschicken.", 4000);
+    renderInfo(); renderOrders(); renderCatalog();
+    if (!$("sheet").classList.contains("hidden")) renderSheet();
+  } catch (e) { toast("Abschicken fehlgeschlagen: " + e.message, 5000); }
+  finally { busy = false; renderBar(); }
 }
-function renderSaved() { $("savedLabel").textContent = timers.size ? "speichert …" : "gespeichert ✓"; }
+$("submitBtn").onclick = $("sheetSubmit").onclick = submit;
 
 function renderBar() {
-  const n = [...qty.values()].reduce((a, b) => a + b, 0);
-  const kinds = qty.size;
-  $("cartLabel").textContent = n ? `Deine Auswahl: ${n} Stück · ${kinds} Sorte${kinds === 1 ? "" : "n"}` : "Noch nichts ausgewählt";
+  const mine = [...draft].filter(([k]) => k.startsWith(activeOrder + "|"));
+  const n = mine.reduce((a, [, q]) => a + q, 0);
+  const label = project.orders.length > 1 ? `${order().title}: ` : "Deine Auswahl: ";
+  $("cartLabel").textContent = n ? `${label}${n} Stück · ${mine.length} Sorte${mine.length === 1 ? "" : "n"}` : "Noch nichts ausgewählt";
+  const d = dirty();
+  $("savedLabel").textContent = busy ? "wird abgeschickt …" : d ? "Noch nicht abgeschickt"
+    : submittedAt ? `Abgeschickt ✓ ${fmtWhen(submittedAt)}` : "";
+  $("savedLabel").classList.toggle("warn", d && !busy);
+  for (const b of [$("submitBtn"), $("sheetSubmit")]) {
+    b.disabled = busy || !d;
+    b.textContent = d ? "Abschicken" : submittedAt ? "Abgeschickt ✓" : "Abschicken";
+  }
 }
 
 $("cartBtn").onclick = () => { renderSheet(); $("sheet").classList.remove("hidden"); $("sheetBg").classList.remove("hidden"); };
 $("sheetClose").onclick = $("sheetBg").onclick = () => { $("sheet").classList.add("hidden"); $("sheetBg").classList.add("hidden"); };
 
+// Übersicht über alle Bestellungen des Projekts
 function renderSheet() {
-  const chosen = catalog.products.filter((p) => qty.get(p.id));
-  if (!chosen.length) { $("sheetBody").innerHTML = `<div class="empty">Noch nichts ausgewählt.<br>Tipp auf „+ Hinzufügen" bei einem Produkt.</div>`; return; }
-  $("sheetBody").innerHTML = catalog.shops.map((s) => {
-    const list = chosen.filter((p) => p.shop === s.id);
+  const multiShop = new Set(catalog.products.map((p) => p.shop)).size > 1;
+  let total = [0, 0];
+  const html = project.orders.map((o) => {
+    const list = catalog.products.filter((p) => draft.get(key(o.id, p.id)));
     if (!list.length) return "";
-    return `<div class="shop-head">${esc(s.name)}</div>` + list.map((p) => `
-      <div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
-        <div class="grow">${esc(p.name)}<small>${esc(p.category)}</small></div>
-        ${event.closed ? `<b>${qty.get(p.id)}×</b>` : stepperHtml(p.id, qty.get(p.id))}</div>`).join("");
+    return `<div class="shop-head">${esc(o.title)}${o.pickup_at ? " · " + esc(fmtPickup(o.pickup_at)) : ""}${o.closed ? " · geschlossen" : ""}</div>` + list.map((p) => {
+      const q = draft.get(key(o.id, p.id));
+      const c = lineCost(p, q); total = [total[0] + c[0], total[1] + c[1]];
+      return `<div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
+        <div class="grow">${esc(p.name)}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name : p.category)} · ${piecePrice(p)}</small></div>
+        ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, q)}</div>`;
+    }).join("");
   }).join("");
-  $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.id, +b.dataset.d); };
+  $("sheetBody").innerHTML = html || `<div class="empty">Noch nichts ausgewählt.<br>Tipp auf „+ Hinzufügen" bei einem Produkt.</div>`;
+  $("sheetTotal").innerHTML = html ? `Geschätzt <b>${fmtRange(total)}</b>` : "";
+  $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.order, b.dataset.id, +b.dataset.d); };
 }
 
 function zoom(id) {
-  const p = catalog.products.find((x) => x.id === id);
+  const p = prod(id);
   const lb = $("lightbox");
   lb.innerHTML = `<div><img src="${esc(p.image)}" alt=""><p>${esc(p.name)}</p></div>`;
   lb.classList.remove("hidden");

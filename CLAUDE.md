@@ -6,14 +6,18 @@ Gemeinsame Bestellung beim Café Paradiso (italienische Bäckerei, Solingen-Ohli
 2. Langfristig: dem Chef als Bestellsystem zeigen, evtl. dauerhaft einrichten.
 Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Produkte fehlen.
 
-## Stand (Prototyp fertig, läuft im Demo-Modus)
+## Stand (live seit 2026-11-25)
+- Live: https://lucalauria98.github.io/paradiso/admin.html · Repo `lucalauria98/paradiso` (öffentlich, Pages aus `/docs`)
+- Supabase-Projekt `paradiso` (eigene Organization, Frankfurt), Signups aus, ein Admin-User
 - Frontend: reines HTML/CSS/JS ohne Build in `docs/` → GitHub Pages (Ordner /docs)
-- Backend: Supabase (Postgres, Auth, Realtime, RLS). `docs/config.js` ist noch leer = Demo-Modus (localStorage)
-- `docs/index.html` + `guest.js`: Gast öffnet `?e=<invite_code>`, gibt Namen ein, wählt Produkte (+/−), Autosave. Sieht KEINE Preise und nichts von anderen.
-- `docs/admin.html` + `admin.js`: Login (E-Mail/Passwort), Bestellung anlegen, Einladungslink/WhatsApp, Live-Übersicht nach Produkt/Person, geschätzte Kosten, Gewicht Minis, Bestellliste kopieren, Bestellung schließen.
+- Backend: Supabase (Postgres, Auth, Realtime, RLS). `docs/config.js` enthält URL + Publishable Key (leer = Demo-Modus mit localStorage)
+- Aufbau: **Projekt** (z. B. Weihnachten 2026, ein Einladungslink) → mehrere **Bestellungen** (Titel + Abholtermin, einzeln schließbar). Gäste tragen sich einmal pro Projekt ein, Auswahl je Bestellung.
+- `docs/index.html` + `guest.js`: Gast öffnet `?e=<invite_code>`, gibt Namen ein, wählt pro Bestellung (Reiter) Produkte in Reitern Herzhaft/Süß. Auswahl = Entwurf (localStorage) bis „Abschicken“; erneutes Abschicken aktualisiert. Sieht „ca.“-Preise pro Stück, Notiz des Gastgebers, wer dabei ist/abgeschickt hat (nur Namen) – nie die Auswahl anderer.
+- `docs/admin.html` + `admin.js`: Login, Projekte (+ Notiz für Gäste), Bestellungen anlegen/bearbeiten/löschen/schließen, Einladungslink/WhatsApp/Gast-Ansicht, Live-Übersicht je Bestellung oder „Gesamt“ nach Produkt/Person/Verlauf, Live-Meldung bei neuem Abschicken, Bestellliste kopieren. Bereich „Produkte & Preise“: gleiche Ansicht wie Gäste, Editor pro Produkt inkl. Foto-Upload (Supabase Storage `produktbilder`).
+- `docs/ui.js`: gemeinsame Produktansicht (Reiter Herzhaft/Süß, Kategorien, Preis-Infos, Infokasten)
 - `docs/api.js`: Datenschicht (Supabase oder Demo, gleiche Schnittstelle) + Preisberechnung
-- `docs/catalog.json`: 53 Produkte (Quelle der Wahrheit) → `python3 tools/gen_seed.py` erzeugt `supabase/seed.sql`
-- `supabase/schema.sql`: Tabellen shops, products, events, participants, order_items; RLS; Gäste nur über security-definer-RPCs `guest_event/guest_join/guest_items/guest_set_item` (id + secret). Lokal mit Postgres getestet.
+- Produkte: **Supabase ist Quelle der Wahrheit** (Admin-Editor). `docs/catalog.json` (53 Produkte, Feld `kind` herzhaft/suess) nur für Demo + Erstbefüllung; `tools/gen_seed.py` → `seed.sql` legt nur Fehlendes an (`--overwrite` überschreibt)
+- `supabase/schema.sql`: Tabellen admins, shops, products, projects, orders, participants, order_items, submissions (Verlauf); explizite GRANTs + RLS; Produkte/Bilder nur für `is_admin()`; Gäste nur über security-definer-RPCs `guest_project/guest_join/guest_items/guest_submit` (id + secret). Syntax lässt sich mit `pglast` prüfen (kein lokales Postgres).
 - Bilder: `docs/img/paradiso/*.jpg` (aus Thekenfotos zugeschnitten, Platzhalterqualität)
 
 ## Preise (Schätzungen, Chef konnte keine genauen nennen)
@@ -22,7 +26,8 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 - Kosten sieht nur der Admin
 
 ## Offene Punkte
-- Supabase live schalten (Schema + Seed ausführen, Admin-User anlegen, Signups aus, config.js füllen), GitHub-Repo + Pages
+- Optik überarbeiten (Paradiso-Website als Vorlage, Link kommt vom Nutzer)
+- Supabase Free-Plan pausiert nach ~1 Woche Inaktivität → vor Einsatz prüfen
 - Arancini & Calzone: noch kein Bild (coming_soon)
 - Namen klären: V1-2.9 (frittiertes Teil), C-1.3 (Gebäck-Muschel)
 - 9 weitere Süß-Fotos in `Bilder_Süßkram/IMG_2821–2829` noch nicht eingearbeitet

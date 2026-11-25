@@ -27,7 +27,7 @@
   <!-- Name eingeben -->
   <section id="join" class="panel hidden">
     <h2>Wie heißt du?</h2>
-    <p>Gib deinen Namen ein und such dir dann aus, was du gern hättest. Deine Auswahl wird automatisch gespeichert.</p>
+    <p>Gib einmal deinen Namen ein, such dir für jede Bestellung aus, was du gern hättest, und schick deine Auswahl ab. Ändern geht jederzeit.</p>
     <form id="joinForm">
       <input class="field" id="nameInput" maxlength="60" placeholder="z. B. Tante Maria" autocomplete="given-name" required>
       <button class="btn" type="submit">Los geht's</button>
@@ -37,6 +37,9 @@
 
   <!-- Katalog -->
   <section id="shopView" class="hidden">
+    <div id="info"></div>
+    <div class="order-tabs" id="orderTabs"></div>
+    <p class="order-info" id="orderInfo"></p>
     <div class="sticky">
       <div class="tabs" id="tabs"></div>
       <nav class="chips" id="chips"></nav>
@@ -47,14 +50,21 @@
 </main>
 
 <div class="bar hidden" id="bar">
-  <button class="btn" id="cartBtn"><span id="cartLabel">Deine Auswahl</span><span class="saved" id="savedLabel">gespeichert ✓</span></button>
+  <div class="bar-in">
+    <button class="cart" id="cartBtn"><span id="cartLabel">Deine Auswahl</span><small id="savedLabel"></small></button>
+    <button class="btn" id="submitBtn">Abschicken</button>
+  </div>
 </div>
 
 <div id="sheetBg" class="sheet-bg hidden"></div>
 <section id="sheet" class="sheet hidden" aria-label="Deine Auswahl">
   <h2>Deine Auswahl <button id="sheetClose" aria-label="Schließen">×</button></h2>
   <div id="sheetBody"></div>
-  <p class="cat-note" style="margin-top:14px">Du kannst deine Auswahl jederzeit über denselben Link ändern, solange die Bestellung offen ist.</p>
+  <div class="sheet-foot">
+    <div id="sheetTotal"></div>
+    <button class="btn" id="sheetSubmit">Abschicken</button>
+  </div>
+  <p class="cat-note" style="margin-top:14px">Du kannst deine Auswahl jederzeit über denselben Link ändern und erneut abschicken, solange die jeweilige Bestellung offen ist. Preise sind Schätzungen.</p>
 </section>
 
 <div id="lightbox" class="lightbox hidden"></div>
