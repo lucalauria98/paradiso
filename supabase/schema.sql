@@ -65,8 +65,13 @@ create table if not exists orders (
   title       text not null check (char_length(title) between 1 and 80),
   pickup_at   timestamptz,                     -- Abholtermin (optional)
   closed      boolean not null default false,
+  mini_mix    jsonb not null default '{}'::jsonb, -- Admin: Minis gemischt je Kategorie, {"Herzhaftes": 1500} (Gramm)
+  final_amount numeric(8,2),                    -- Admin: Endbetrag laut Bon
   created_at  timestamptz not null default now()
 );
+-- für bestehende Datenbanken
+alter table orders add column if not exists mini_mix jsonb not null default '{}'::jsonb;
+alter table orders add column if not exists final_amount numeric(8,2);
 
 create table if not exists participants (
   id         uuid primary key default gen_random_uuid(),
@@ -87,6 +92,16 @@ create table if not exists order_items (
   primary key (participant_id, order_id, product_id, variant)
 );
 
+-- Bestellplanung des Admins: was wirklich beim Laden bestellt wird (Mini: Gramm, Normal: Stück).
+-- Ohne Eintrag gilt der Vorschlag aus den Gäste-Wünschen (Minis auf 100 g aufgerundet).
+create table if not exists order_plan (
+  order_id   uuid not null references orders(id) on delete cascade,
+  product_id text not null references products(id),
+  variant    text not null check (variant in ('mini','stk')),
+  amount     int  not null check (amount >= 0 and amount <= 100000),
+  primary key (order_id, product_id, variant)
+);
+
 -- Verlauf: jedes Abschicken mit Änderungen, changes = [{order_id, product_id, variant, old, new}]
 create table if not exists submissions (
   id             bigint generated always as identity primary key,
@@ -104,8 +119,8 @@ grant usage on schema public to anon, authenticated;
 revoke all on shops, products from anon;                 -- Gäste: Katalog nur lesen
 grant select on shops, products to anon, authenticated;
 grant insert, update on products to authenticated;
-grant select, insert, update, delete on projects, orders, participants, order_items, submissions to authenticated;
-revoke all on admins, projects, orders, participants, order_items, submissions from anon;
+grant select, insert, update, delete on projects, orders, participants, order_items, submissions, order_plan to authenticated;
+revoke all on admins, projects, orders, participants, order_items, submissions, order_plan from anon;
 revoke all on admins from authenticated;
 grant execute on function is_admin() to authenticated;
 
@@ -117,6 +132,7 @@ alter table orders       enable row level security;
 alter table participants enable row level security;
 alter table order_items  enable row level security;
 alter table submissions  enable row level security;
+alter table order_plan   enable row level security;
 
 -- Katalog: alle dürfen lesen, nur Admins ändern
 drop policy if exists "shops read" on shops;
@@ -151,6 +167,11 @@ create policy "items admin" on order_items for all to authenticated
 drop policy if exists "submissions admin" on submissions;
 create policy "submissions admin" on submissions for all to authenticated
   using (exists (select 1 from projects p where p.id = project_id and p.admin_id = auth.uid()));
+
+drop policy if exists "plan admin" on order_plan;
+create policy "plan admin" on order_plan for all to authenticated
+  using (exists (select 1 from orders o join projects p on p.id = o.project_id
+                 where o.id = order_id and p.admin_id = auth.uid()));
 
 -- ───────────── Funktionen für Gäste (ohne Login) ─────────────
 -- Projekt zum Einladungscode: Titel, Notiz, Bestellungen und wer dabei ist

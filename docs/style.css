@@ -78,7 +78,8 @@ img { display: block; }
 .card .foot { display: grid; gap: 8px; }
 .card .variant { display: grid; gap: 5px; }
 .card .variant + .variant { border-top: 1px dashed var(--line); padding-top: 8px; }
-.card .v-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 13px; }
+.card .v-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 13px; color: var(--muted); }
+.card .v-head b { color: var(--ink); }
 .card .v-head b { font-size: 13px; }
 .card .variant .add { padding: 7px; font-size: 14px; }
 .card .variant .stepper button { width: 32px; height: 32px; font-size: 18px; }
@@ -191,6 +192,22 @@ select.field { font-size: 15px; padding: 9px 12px; width: auto; }
 .main-tabs { margin: 16px 0 0; }
 .note-edit { display: grid; gap: 4px; margin: 14px 0 6px; font-size: 14px; font-weight: 600; }
 .note-edit .field { font-size: 15px; font-weight: 400; resize: vertical; }
+
+/* Bestellplanung */
+.mixbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 8px; }
+.chip { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--ink); }
+.chip.on { border-color: var(--green); background: var(--green-soft); color: var(--green-dark); font-weight: 600; }
+td.plan { white-space: nowrap; }
+input.amt { width: 76px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 15px; text-align: right; }
+input.amt:focus, input.final:focus { outline: none; border-color: var(--green); }
+.link-btn.reset { padding: 2px 0 0; font-size: 12px; }
+tr.mix td { background: #fbf7ef; }
+.stat input.final { width: 110px; padding: 2px 6px; border: 1.5px solid var(--line); border-radius: 8px; font: inherit; font-size: 20px; font-weight: 700; }
+@media (max-width: 560px) {
+  .plan-table td:first-child, .plan-table th:first-child { display: none; }
+  .plan-table { font-size: 13px; }
+  input.amt { width: 64px; }
+}
 
 /* Verlauf */
 .log { border-top: 1px solid var(--line); padding: 10px 0; font-size: 14px; }

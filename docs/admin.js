@@ -232,17 +232,8 @@ function render() {
   }
 
   const items = itemsOf(sel);
-  const rows = totals(items);
-  let cost = [0, 0], weight = 0, pieces = 0;
-  rows.forEach((r) => { cost = add(cost, lineCost(r.p, r.qty, r.v)); weight += lineWeight(r.p, r.qty, r.v); pieces += r.qty; });
-  const active = new Set(items.map((i) => i.participant_id)).size;
-  const sent = data.participants.filter((p) => lastSubmit(p.id)).length;
-  $("stats").innerHTML = `
-    <div class="stat main"><div class="k">Geschätzte Kosten</div><div class="v">${fmtRange(cost)}</div></div>
-    <div class="stat"><div class="k">Gäste mit Auswahl</div><div class="v">${active}</div><div class="cat-note" style="margin:2px 0 0">${data.participants.length} dabei · ${sent} abgeschickt</div></div>
-    <div class="stat"><div class="k">Teile gesamt</div><div class="v">${pieces}</div></div>
-    <div class="stat"><div class="k">Minis (Gewicht)</div><div class="v">${fmtKg(weight)}</div></div>`;
-  renderByProduct(rows);
+  renderStats(o, items);
+  renderByProduct(o);
   renderByPerson(items);
   renderLog();
 }
@@ -260,24 +251,146 @@ function renderOrderTabs() {
   }).join("");
 }
 
-function renderByProduct(rows) {
+// ───────── Bestellplanung: was wirklich beim Laden bestellt wird ─────────
+// Gäste wählen Stückzahlen. Der Admin legt pro Bestellung fest: Minis in Gramm (Vorschlag = Wünsche
+// × Stückgewicht, auf 100 g aufgerundet), normale Teile in Stück, optional Minis gemischt je Kategorie.
+const roundUp100 = (g) => (g > 0 ? Math.ceil(g / 100) * 100 : 0);
+const planSet = (orderId, pid, v) => data.plans.find((x) => x.order_id === orderId && x.product_id === pid && x.variant === v)?.amount;
+const avgKgPrice = (rows) => {
+  const w = rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini"), 0);
+  return w ? rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini") * r.p.mini_price_kg, 0) / w : rows[0]?.p.mini_price_kg || 0;
+};
+function planOf(o) {
+  const mix = o.mini_mix || {};
+  const lines = [], groups = new Map();
+  for (const r of totals(itemsOf(o.id))) {
+    if (r.v === "mini" && mix[r.p.category] != null) {
+      let g = groups.get(r.p.category);
+      if (!g) { g = { type: "mix", category: r.p.category, shop: r.p.shop, rows: [] }; groups.set(r.p.category, g); lines.push(g); }
+      g.rows.push(r);
+      continue;
+    }
+    const suggested = r.v === "mini" ? roundUp100(lineWeight(r.p, r.qty, "mini")) : r.qty;
+    const set = planSet(o.id, r.p.id, r.v);
+    const amount = set ?? suggested;
+    const cost = r.v === "mini" ? Array(2).fill((amount / 1000) * r.p.mini_price_kg) : lineCost(r.p, amount, "stk");
+    lines.push({ type: "item", ...r, shop: r.p.shop, suggested, amount, adjusted: set != null && set !== suggested, cost, grams: r.v === "mini" ? amount : 0 });
+  }
+  for (const g of groups.values()) {
+    g.qty = g.rows.reduce((a, r) => a + r.qty, 0);
+    g.suggested = roundUp100(g.rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini"), 0));
+    g.amount = mix[g.category] || g.suggested;     // 0 = Vorschlag verwenden
+    g.adjusted = g.amount !== g.suggested;
+    g.grams = g.amount;
+    g.cost = Array(2).fill((g.amount / 1000) * avgKgPrice(g.rows));
+  }
+  return lines;
+}
+const sumPlan = (lines) => lines.reduce((t, l) => ({ cost: add(t.cost, l.cost), grams: t.grams + l.grams }), { cost: [0, 0], grams: 0 });
+const people = (r) => [...r.people].map(([n, q]) => `${esc(n)} ${q}`).join(", ");
+
+function renderStats(o, items) {
+  const orders = o ? [o] : project.orders;
+  const plan = sumPlan(orders.flatMap(planOf));
+  const pieces = items.reduce((a, i) => a + i.qty, 0);
+  const active = new Set(items.map((i) => i.participant_id)).size;
+  const sent = data.participants.filter((p) => lastSubmit(p.id)).length;
+  const finals = orders.filter((x) => x.final_amount != null);
+  const finalSum = finals.reduce((a, x) => a + +x.final_amount, 0);
+  const finalHtml = o
+    ? `<div class="v"><input class="final" id="finalInput" type="number" min="0" step="0.01" inputmode="decimal" value="${o.final_amount ?? ""}" placeholder="–"> €</div>
+       <div class="cat-note" style="margin:2px 0 0">${o.final_amount != null ? "laut Bon" : "nach dem Abholen eintragen"}</div>`
+    : `<div class="v">${finals.length ? fmtRange([finalSum, finalSum]).replace("ca. ", "") : "–"}</div>
+       <div class="cat-note" style="margin:2px 0 0">${finals.length} von ${orders.length} eingetragen</div>`;
+  $("stats").innerHTML = `
+    <div class="stat main"><div class="k">Geschätzte Kosten</div><div class="v">${fmtRange(plan.cost)}</div><div class="cat-note" style="margin:2px 0 0;color:#cfe6d8">nach Bestellmenge</div></div>
+    <div class="stat"><div class="k">Endbetrag</div>${finalHtml}</div>
+    <div class="stat"><div class="k">Gäste mit Auswahl</div><div class="v">${active}</div><div class="cat-note" style="margin:2px 0 0">${data.participants.length} dabei · ${sent} abgeschickt</div></div>
+    <div class="stat"><div class="k">Minis (Bestellung)</div><div class="v">${fmtKg(plan.grams)}</div><div class="cat-note" style="margin:2px 0 0">${pieces} Teile gewünscht</div></div>`;
+}
+$("stats").onchange = async (e) => {
+  if (e.target.id !== "finalInput") return;
+  const o = order(); const v = e.target.value === "" ? null : Math.round(+e.target.value * 100) / 100;
+  await api.updateOrder(o.id, { final_amount: v });
+  o.final_amount = v; render();
+};
+
+function renderByProduct(o) {
+  if (!o) return renderWishes();
+  const lines = planOf(o);
+  if (!lines.length) { $("byProduct").innerHTML = `<div class="empty">Noch keine Auswahl abgeschickt.</div>`; return; }
+  const mix = o.mini_mix || {};
+  const cats = [...new Set(totals(itemsOf(o.id)).filter((r) => r.v === "mini").map((r) => r.p.category))];
+  const mixBar = cats.length ? `<div class="mixbar no-print"><span class="cat-note">Minis gemischt bestellen:</span>
+    ${cats.map((c) => `<button class="chip ${mix[c] != null ? "on" : ""}" data-mix="${esc(c)}">${mix[c] != null ? "✓ " : ""}${esc(c)}</button>`).join("")}</div>` : "";
+  const unit = (v) => (v === "mini" ? "g" : "Stk");
+  const amountHtml = (l, attr) => `<input class="amt" type="number" min="0" step="${l.type === "mix" || l.v === "mini" ? 100 : 1}" inputmode="numeric" value="${l.amount}" ${attr}>
+    ${l.type === "mix" ? "g" : unit(l.v)}${l.adjusted ? `<br><button class="link-btn reset" ${attr.replace("data-plan", "data-reset").replace("data-mixamt", "data-mixreset")}>↺ Vorschlag ${l.type === "mix" || l.v === "mini" ? fmtKg(l.suggested) : l.suggested + " Stk"}</button>` : ""}`;
+  $("byProduct").innerHTML = mixBar + catalog.shops.map((s) => {
+    const list = lines.filter((l) => l.shop === s.id);
+    if (!list.length) return "";
+    const sum = sumPlan(list);
+    const tr = list.map((l) => l.type === "mix"
+      ? `<tr class="mix"><td></td>
+          <td><b>${esc(l.category)} – Minis gemischt</b><br><span class="cat-note">Wünsche: ${l.rows.map((r) => `${r.qty}× ${esc(r.p.name)}`).join(", ")}</span></td>
+          <td class="num"><b>${l.qty}</b> Stk<br><span class="cat-note">≈ ${fmtKg(l.rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini"), 0))}</span></td>
+          <td class="num plan">${amountHtml(l, `data-mixamt="${esc(l.category)}"`)}</td>
+          <td class="num">${fmtRange(l.cost)}</td></tr>`
+      : `<tr><td>${l.p.image ? `<img src="${esc(l.p.image)}" alt="">` : ""}</td>
+          <td><b>${esc(withVariant(l.p, l.v))}</b><br><span class="cat-note">${l.p.code ? esc(l.p.code) + " · " : ""}${esc(priceLabel(l.p, l.v))}</span><br>
+          <span class="cat-note">${people(l)}</span></td>
+          <td class="num"><b>${l.qty}</b> Stk${l.v === "mini" ? `<br><span class="cat-note">≈ ${fmtKg(lineWeight(l.p, l.qty, "mini"))}</span>` : ""}</td>
+          <td class="num plan">${amountHtml(l, `data-plan="${l.p.id}|${l.v}"`)}</td>
+          <td class="num">${fmtRange(l.cost)}</td></tr>`).join("");
+    return `<h3 class="serif">${esc(s.name)}</h3><table class="plan-table">
+      <thead><tr><th></th><th>Produkt</th><th class="num">Wünsche</th><th class="num">Bestellen</th><th class="num">Kosten</th></tr></thead>
+      <tbody>${tr}<tr class="sub"><td></td><td>Summe ${esc(s.name)}</td><td></td><td class="num">${sum.grams ? fmtKg(sum.grams) + " Minis" : ""}</td><td class="num">${fmtRange(sum.cost)}</td></tr></tbody></table>`;
+  }).join("") + `<p class="cat-note no-print" style="margin-top:10px">Wünsche = was die Gäste gewählt haben. Unter „Bestellen“ legst du fest, was du beim Laden bestellst – das steht in der Bestellliste.</p>`;
+}
+
+// Bestellmengen ändern (Eingabe bestätigt mit Enter oder beim Verlassen des Felds)
+$("byProduct").onchange = async (e) => {
+  const o = order(); if (!o) return;
+  const t = e.target, val = Math.max(0, Math.round(+t.value || 0));
+  if (t.dataset.plan) {
+    const [pid, v] = t.dataset.plan.split("|");
+    const l = planOf(o).find((x) => x.type === "item" && x.p.id === pid && x.v === v);
+    await api.setPlan(o.id, pid, v, val === l?.suggested ? null : val);
+    await refresh();
+  } else if (t.dataset.mixamt != null) {
+    const g = planOf(o).find((x) => x.type === "mix" && x.category === t.dataset.mixamt);
+    await saveMix(o, { ...o.mini_mix, [t.dataset.mixamt]: val === g?.suggested ? 0 : val });
+  }
+};
+$("byProduct").onclick = async (e) => {
+  const o = order(); if (!o) return;
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.mix != null) {
+    const mix = { ...o.mini_mix };
+    mix[b.dataset.mix] != null ? delete mix[b.dataset.mix] : (mix[b.dataset.mix] = 0);
+    await saveMix(o, mix);
+  } else if (b.dataset.reset) {
+    const [pid, v] = b.dataset.reset.split("|");
+    await api.setPlan(o.id, pid, v, null); await refresh();
+  } else if (b.dataset.mixreset != null) {
+    await saveMix(o, { ...o.mini_mix, [b.dataset.mixreset]: 0 });
+  }
+};
+async function saveMix(o, mix) { await api.updateOrder(o.id, { mini_mix: mix }); o.mini_mix = mix; render(); }
+
+// „Gesamt“: nur die Wünsche über alle Bestellungen (Bestellmengen werden pro Bestellung festgelegt)
+function renderWishes() {
+  const rows = totals(itemsOf(ALL));
   if (!rows.length) { $("byProduct").innerHTML = `<div class="empty">Noch keine Auswahl abgeschickt.</div>`; return; }
   $("byProduct").innerHTML = catalog.shops.map((s) => {
     const list = rows.filter((r) => r.p.shop === s.id);
     if (!list.length) return "";
-    let sub = [0, 0], subW = 0;
-    const tr = list.map((r) => {
-      const c = lineCost(r.p, r.qty, r.v), w = lineWeight(r.p, r.qty, r.v); sub = add(sub, c); subW += w;
-      return `<tr><td>${r.p.image ? `<img src="${esc(r.p.image)}" alt="">` : ""}</td>
-        <td><b>${esc(withVariant(r.p, r.v))}</b><br><span class="cat-note">${r.p.code ? esc(r.p.code) + " · " : ""}${esc(priceLabel(r.p, r.v))}</span><br>
-        <span class="cat-note">${[...r.people].map(([n, q]) => `${esc(n)} ${q}`).join(", ")}</span></td>
-        <td class="num"><b>${r.qty}</b> Stk${w ? `<br><span class="cat-note">≈ ${fmtKg(w)}</span>` : ""}</td>
-        <td class="num">${fmtRange(c)}</td></tr>`;
-    }).join("");
     return `<h3 class="serif">${esc(s.name)}</h3><table>
-      <thead><tr><th></th><th>Produkt</th><th class="num">Menge</th><th class="num">Kosten</th></tr></thead>
-      <tbody>${tr}<tr class="sub"><td></td><td>Summe ${esc(s.name)}</td><td class="num">${subW ? "≈ " + fmtKg(subW) : ""}</td><td class="num">${fmtRange(sub)}</td></tr></tbody></table>`;
-  }).join("");
+      <thead><tr><th></th><th>Produkt</th><th class="num">Wünsche</th></tr></thead>
+      <tbody>${list.map((r) => `<tr><td>${r.p.image ? `<img src="${esc(r.p.image)}" alt="">` : ""}</td>
+        <td><b>${esc(withVariant(r.p, r.v))}</b><br><span class="cat-note">${people(r)}</span></td>
+        <td class="num"><b>${r.qty}</b> Stk${r.v === "mini" ? `<br><span class="cat-note">≈ ${fmtKg(lineWeight(r.p, r.qty, "mini"))}</span>` : ""}</td></tr>`).join("")}</tbody></table>`;
+  }).join("") + `<p class="cat-note" style="margin-top:10px">Bestellmengen (Gramm, gemischt, Reserve) legst du pro Bestellung im jeweiligen Reiter fest.</p>`;
 }
 
 function renderByPerson(items) {
@@ -322,17 +435,19 @@ function renderLog() {
   }).join("");
 }
 
-// Text zum Durchgeben/Schicken an den Laden – je Bestellung ein Block
+// Text zum Durchgeben/Schicken an den Laden – je Bestellung ein Block, mit den Bestellmengen
 function orderText(o) {
-  const rows = totals(itemsOf(o.id));
-  if (!rows.length) return "";
+  const lines = planOf(o).filter((l) => l.amount > 0);
+  if (!lines.length) return "";
   const head = [`Bestellung: ${o.title}`, o.pickup_at ? `Abholung: ${fmtPickup(o.pickup_at)}` : ""].filter(Boolean);
   return head.concat("", catalog.shops.flatMap((s) => {
-    const list = rows.filter((r) => r.p.shop === s.id);
+    const list = lines.filter((l) => l.shop === s.id);
     if (!list.length) return [];
-    const w = list.reduce((a, r) => a + lineWeight(r.p, r.qty, r.v), 0);
-    return [`== ${s.name} ==`, ...list.map((r) => `${r.qty}× ${withVariant(r.p, r.v)}${r.p.code ? ` [${r.p.code}]` : ""}`),
-      w ? `(Minis gesamt ca. ${fmtKg(w)})` : "", ""];
+    const grams = sumPlan(list).grams;
+    return [`== ${s.name} ==`, ...list.flatMap((l) => l.type === "mix"
+      ? [`${fmtKg(l.amount)} ${l.category} – Minis gemischt`, `   (gern u. a.: ${l.rows.map((r) => r.p.name).join(", ")})`]
+      : [`${l.v === "mini" ? fmtKg(l.amount) : l.amount + "×"} ${withVariant(l.p, l.v)}${l.p.code ? ` [${l.p.code}]` : ""}`]),
+      grams ? `(Minis gesamt ca. ${fmtKg(grams)})` : "", ""];
   })).join("\n").trim();
 }
 $("copyList").onclick = () => {

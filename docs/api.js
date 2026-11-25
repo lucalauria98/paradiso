@@ -111,15 +111,22 @@ const live = {
   async deleteOrder(id) { must(await (await table("orders")).delete().eq("id", id)); },
   async projectData(projectId) {
     const sb = await client();
-    const [participants, submissions] = await Promise.all([
+    const [participants, submissions, plans] = await Promise.all([
       sb.from("participants").select("id,name,created_at").eq("project_id", projectId).order("created_at").then(must),
       sb.from("submissions").select("id,participant_id,name,changes,created_at").eq("project_id", projectId).order("created_at", { ascending: false }).then(must),
+      sb.from("order_plan").select("order_id,product_id,variant,amount,orders!inner(project_id)").eq("orders.project_id", projectId).then(must),
     ]);
     const ids = participants.map((p) => p.id);
     const items = ids.length
       ? must(await sb.from("order_items").select("participant_id,order_id,product_id,variant,qty,updated_at").in("participant_id", ids))
       : [];
-    return { participants, items, submissions };
+    return { participants, items, submissions, plans: plans.map(({ orders, ...r }) => r) };
+  },
+  // Bestellmenge festlegen (Mini: Gramm, Normal: Stück); amount = null → zurück zum Vorschlag
+  async setPlan(orderId, productId, variant, amount) {
+    const t = await table("order_plan");
+    if (amount == null) must(await t.delete().eq("order_id", orderId).eq("product_id", productId).eq("variant", variant));
+    else must(await t.upsert({ order_id: orderId, product_id: productId, variant, amount }));
   },
   async deleteParticipant(id) { must(await (await table("participants")).delete().eq("id", id)); },
   async subscribe(projectId, cb) {
@@ -146,9 +153,9 @@ const live = {
 };
 
 // ───────── Demo (localStorage) ─────────
-const KEY = "paradiso-demo-v4";
+const KEY = "paradiso-demo-v5";
 const PKEY = "paradiso-demo-products-v2"; // im Admin geänderte/neue Produkte
-const read = () => JSON.parse(localStorage.getItem(KEY) || '{"projects":[],"orders":[],"participants":[],"items":[],"submissions":[]}');
+const read = () => JSON.parse(localStorage.getItem(KEY) || '{"projects":[],"orders":[],"participants":[],"items":[],"submissions":[],"plans":[]}');
 const write = (db) => localStorage.setItem(KEY, JSON.stringify(db));
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -162,8 +169,8 @@ function seedDemo() {
   const p = { id: uid(), title: "Weihnachten 2026", invite_code: "demo", note: "Abholung macht Luca, bezahlt wird nach der Abholung.", created_at: now() };
   db.projects.push(p);
   db.orders.push(
-    { id: uid(), project_id: p.id, title: "Kaffee Heiligabend", pickup_at: new Date(2026, 11, 24, 10).toISOString(), closed: false, created_at: now() },
-    { id: uid(), project_id: p.id, title: "Kaffee 1. Feiertag", pickup_at: new Date(2026, 11, 25, 14).toISOString(), closed: false, created_at: now() },
+    { id: uid(), project_id: p.id, title: "Kaffee Heiligabend", pickup_at: new Date(2026, 11, 24, 10).toISOString(), closed: false, mini_mix: {}, final_amount: null, created_at: now() },
+    { id: uid(), project_id: p.id, title: "Kaffee 1. Feiertag", pickup_at: new Date(2026, 11, 25, 14).toISOString(), closed: false, mini_mix: {}, final_amount: null, created_at: now() },
   );
   write(db);
 }
@@ -238,12 +245,13 @@ const demo = {
   },
   async updateProject(id, patch) { const db = read(); Object.assign(db.projects.find((p) => p.id === id), patch); write(db); },
   async createOrder(projectId, title, pickup_at) {
-    const db = read(); const o = { id: uid(), project_id: projectId, title, pickup_at, closed: false, created_at: now() };
+    const db = read(); const o = { id: uid(), project_id: projectId, title, pickup_at, closed: false, mini_mix: {}, final_amount: null, created_at: now() };
     db.orders.push(o); write(db); return o;
   },
   async updateOrder(id, patch) { const db = read(); Object.assign(db.orders.find((o) => o.id === id), patch); write(db); },
   async deleteOrder(id) {
-    const db = read(); db.orders = db.orders.filter((o) => o.id !== id); db.items = db.items.filter((i) => i.order_id !== id); write(db);
+    const db = read(); db.orders = db.orders.filter((o) => o.id !== id); db.items = db.items.filter((i) => i.order_id !== id);
+    db.plans = db.plans.filter((x) => x.order_id !== id); write(db);
   },
   async projectData(projectId) {
     const db = read();
@@ -253,7 +261,14 @@ const demo = {
       participants,
       items: db.items.filter((i) => ids.has(i.participant_id)),
       submissions: db.submissions.filter((s) => s.project_id === projectId).sort((a, b) => b.created_at.localeCompare(a.created_at)),
+      plans: db.plans.filter((x) => db.orders.some((o) => o.id === x.order_id && o.project_id === projectId)),
     };
+  },
+  async setPlan(orderId, productId, variant, amount) {
+    const db = read();
+    db.plans = db.plans.filter((x) => !(x.order_id === orderId && x.product_id === productId && x.variant === variant));
+    if (amount != null) db.plans.push({ order_id: orderId, product_id: productId, variant, amount });
+    write(db);
   },
   async deleteParticipant(id) {
     const db = read();

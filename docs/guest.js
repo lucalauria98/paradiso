@@ -1,5 +1,5 @@
 import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtRange, lineCost, variantsOf, VARIANTS, variantLabel } from "./api.js";
-import { productTabs, inTab, chipsHtml, sectionsHtml, piecePrice, infoHtml } from "./ui.js";
+import { productTabs, inTab, chipsHtml, sectionsHtml, piecePrice, infoHtml, variantHead } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -155,7 +155,7 @@ function cardHtml(p) {
     const ctrl = order().closed ? (q ? `<div class="meta">${q} Stück gewählt</div>` : "")
       : q ? stepperHtml(activeOrder, p.id, v, q)
       : `<button class="add" data-order="${activeOrder}" data-id="${p.id}" data-v="${v}" data-d="1">+ ${vs.length > 1 ? VARIANTS[v] : "Hinzufügen"}</button>`;
-    return `<div class="variant ${q ? "on" : ""}"><div class="v-head">${vs.length > 1 ? `<b>${VARIANTS[v]}</b>` : ""}<span class="price">${piecePrice(p, v)}</span></div>${ctrl}</div>`;
+    return `<div class="variant ${q ? "on" : ""}">${variantHead(p, v)}${ctrl}</div>`;
   }).join("");
   return `<article class="card ${total ? "picked" : ""}" id="card-${p.id}">
     <div class="ph">${img}${total ? `<span class="badge">${total}</span>` : ""}</div>

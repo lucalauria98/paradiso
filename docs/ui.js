@@ -42,6 +42,16 @@ export function piecePrice(p, v) {
   return a || b ? "ca. " + span(a, b) : "";
 }
 
+// Kopfzeile einer Größe auf der Karte: links „Mini · 18 €/kg“ bzw. „Normal“, rechts der Stückpreis
+export function variantHead(p, v) {
+  const both = variantsOf(p).length > 1;
+  const left = v === "mini"
+    ? `${both ? "<b>Mini</b> · " : ""}${fmtEur(p.mini_price_kg).replace(",00", "")}/kg`
+    : both ? "<b>Normal</b>" : "";
+  const right = v === "mini" ? "≈ " + span(...pieceCost(p, v)) : piecePrice(p, v);
+  return `<div class="v-head"><span>${left}</span><span class="price">${right}</span></div>`;
+}
+
 // Preisübersicht je Kategorie und Größe (aus den aktuellen Produktdaten berechnet)
 export function priceNotesHtml(products) {
   const rows = [...new Set(products.map((p) => p.category))].map((c) => {
@@ -59,6 +69,11 @@ export function priceNotesHtml(products) {
   return `<ul class="price-notes">${rows}</ul>`;
 }
 
+function miniNote(products) {
+  const kg = [...new Set(products.filter((p) => p.mini_price_kg != null).map((p) => p.mini_price_kg))];
+  return kg.length === 1 ? `Minis kosten ${fmtEur(kg[0])}/kg, der Preis pro Stück ist daraus geschätzt.` : kg.length ? "Minis werden nach Gewicht berechnet." : "";
+}
+
 // Infokasten: Notiz vom Gastgeber, Ablauf, Preise, wer dabei ist
 export function infoHtml({ note, members, products, guest = true }) {
   const done = members.filter((m) => m.submitted).length;
@@ -70,11 +85,12 @@ export function infoHtml({ note, members, products, guest = true }) {
         ${members.length ? `<p class="members">${members.map((m) => `<span class="${m.submitted ? "ok" : ""}">${esc(m.name)}${m.submitted ? " ✓" : ""}</span>`).join("")}</p>` : `<p class="cat-note">Noch niemand eingetragen.</p>`}
         ${guest ? `<h4>So geht's</h4>
         <ol><li>Oben die Bestellung wählen (z. B. „Kaffee Heiligabend“).</li>
-          <li>Produkte mit <b>+</b> auswählen – herzhaft und süß. Viele gibt es als <b>Mini</b> (klein, nach Gewicht berechnet) oder in <b>normaler Größe</b> (pro Stück).</li>
+          <li>Produkte mit <b>+</b> auswählen – herzhaft und süß. Viele gibt es als <b>Mini</b> oder in <b>normaler Größe</b>.
+            Du wählst einfach die Stückzahl – bei Minis bestellt der Gastgeber dann die passende Menge nach Gewicht.</li>
           <li>Unten auf <b>Abschicken</b> tippen. Ändern und erneut abschicken geht jederzeit, solange die Bestellung offen ist.</li></ol>` : ""}
         <h4>Preise (geschätzt)</h4>
         ${priceNotesHtml(products)}
-        <p class="cat-note">Minis werden nach Gewicht berechnet, normale Teile pro Stück – alle Preise sind Schätzungen.</p>
+        <p class="cat-note">${miniNote(products)} Normale Teile werden pro Stück berechnet. Alle Preise sind Schätzungen.</p>
       </div>
     </details>`;
 }
