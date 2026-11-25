@@ -225,7 +225,9 @@ async function submit() {
   } catch (e) { toast("Abschicken fehlgeschlagen: " + e.message, 5000); }
   finally { busy = false; renderBar(); }
 }
-$("submitBtn").onclick = $("sheetSubmit").onclick = submit;
+// Unten „Abschicken“ öffnet erst die Übersicht (prüfen + Anmerkung), dort „Jetzt abschicken“
+$("submitBtn").onclick = () => openSheet();
+$("sheetSubmit").onclick = submit;
 
 function renderBar() {
   const mine = [...draft].filter(([k]) => k.startsWith(activeOrder + "|"));
@@ -236,13 +238,14 @@ function renderBar() {
   $("savedLabel").textContent = busy ? "wird abgeschickt …" : d ? "Noch nicht abgeschickt"
     : submittedAt ? `Abgeschickt ✓ ${fmtWhen(submittedAt)}` : "";
   $("savedLabel").classList.toggle("warn", d && !busy);
-  for (const b of [$("submitBtn"), $("sheetSubmit")]) {
-    b.disabled = busy || !d;
-    b.textContent = d ? "Abschicken" : submittedAt ? "Abgeschickt ✓" : "Abschicken";
-  }
+  $("submitBtn").disabled = busy || !d;
+  $("submitBtn").textContent = d ? "Abschicken" : submittedAt ? "Abgeschickt ✓" : "Abschicken";
+  $("sheetSubmit").disabled = busy || !d;
+  $("sheetSubmit").textContent = busy ? "Wird abgeschickt …" : d ? "Jetzt abschicken" : submittedAt ? "Abgeschickt ✓" : "Jetzt abschicken";
 }
 
-$("cartBtn").onclick = () => { renderSheet(); $("sheet").classList.remove("hidden"); $("sheetBg").classList.remove("hidden"); };
+function openSheet() { renderSheet(); renderBar(); $("sheet").classList.remove("hidden"); $("sheetBg").classList.remove("hidden"); }
+$("cartBtn").onclick = openSheet;
 $("sheetClose").onclick = $("sheetBg").onclick = () => { $("sheet").classList.add("hidden"); $("sheetBg").classList.add("hidden"); };
 
 // Übersicht über alle Bestellungen des Projekts, je Bestellung mit Anmerkungsfeld
