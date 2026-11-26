@@ -1,4 +1,4 @@
-import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtSpan, stkCost, priceText, variantsOf, VARIANTS, variantLabel } from "./api.js";
+import { api, DEMO, loadCatalog, esc, fmtPickup, fmtWhen, fmtSpan, fmtKg, stkCost, gramCost, priceText, variantsOf, VARIANTS, variantLabel, isWeighed, stepG, qtyText } from "./api.js";
 import { productTabs, inTab, chipsHtml, sectionsHtml, infoHtml, variantHead } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -194,7 +194,9 @@ function renderTabs() {
 function renderCatalog() {
   const products = catalog.products.filter(inTab(activeTab)).filter((p) => !vegOnly || p.veggie);
   $("chips").innerHTML = chipsHtml(products);
-  $("catalog").innerHTML = sectionsHtml(products, cardHtml);
+  $("catalog").innerHTML = !products.length && vegOnly
+    ? `<div class="empty"><h3 class="serif">Nichts Vegetarisches hier</h3>In diesem Bereich gibt es nichts mit 🌱. Schalte „Nur vegetarisch“ aus, um alles zu sehen.</div>`
+    : sectionsHtml(products, cardHtml);
   $("catalog").onclick = onCatalogClick;
   // Produkt-Notiz tippen: nur Entwurf aktualisieren (Feld nicht neu zeichnen, sonst springt der Cursor)
   $("catalog").oninput = (e) => {
@@ -223,18 +225,18 @@ function cardHtml(p) {
     : `<div class="soon">Bild folgt</div>`;
   const rows = p.coming_soon ? `<div class="meta">Bald dabei – noch nicht bestellbar</div>` : vs.map((v) => {
     const q = draft.get(key(activeOrder, p.id, v)) || 0;
-    const ctrl = order().closed ? (q ? `<div class="meta">${q} Stück gewählt</div>` : "")
+    const ctrl = order().closed ? (q ? `<div class="meta">${qtyText(p, v, q)}${isWeighed(p, v) ? "" : " Stück"} gewählt</div>` : "")
       : q ? stepperHtml(activeOrder, p.id, v, q)
-      : `<button class="add" data-order="${activeOrder}" data-id="${p.id}" data-v="${v}" data-d="1">+ ${vs.length > 1 ? VARIANTS[v] : "Hinzufügen"}</button>`;
+      : `<button class="add" data-order="${activeOrder}" data-id="${p.id}" data-v="${v}" data-d="1">+ ${isWeighed(p, v) ? fmtKg(stepG(p)) : vs.length > 1 ? VARIANTS[v] : "Hinzufügen"}</button>`;
     return `<div class="variant ${q ? "on" : ""}">${variantHead(p, v)}${ctrl}</div>`;
   }).join("");
   return `<article class="card ${total ? "picked" : ""}" id="card-${p.id}">
-    <div class="ph">${img}${p.veggie ? `<span class="veg-badge">🌱 Vegetarisch</span>` : ""}${total ? `<span class="badge">${total}</span>` : ""}</div>
+    <div class="ph">${img}${p.veggie ? `<span class="veg-badge">🌱 Vegetarisch</span>` : ""}${total ? `<span class="badge">${p.by_weight && vs.length === 1 ? qtyText(p, "mini", total) : total}</span>` : ""}</div>
     <div class="body"><div class="name">${esc(p.name)}</div><div class="foot">${rows}${total && !p.coming_soon ? cardNoteHtml(p) : ""}</div></div></article>`;
 }
 
 const stepperHtml = (orderId, id, v, q) =>
-  `<div class="stepper"><button data-order="${orderId}" data-id="${id}" data-v="${v}" data-d="-1" aria-label="weniger">−</button><span class="q">${q}</span><button data-order="${orderId}" data-id="${id}" data-v="${v}" data-d="1" aria-label="mehr">+</button></div>`;
+  `<div class="stepper"><button data-order="${orderId}" data-id="${id}" data-v="${v}" data-d="-1" aria-label="weniger">−</button><span class="q">${qtyText(prod(id), v, q)}</span><button data-order="${orderId}" data-id="${id}" data-v="${v}" data-d="1" aria-label="mehr">+</button></div>`;
 
 function onCatalogClick(e) {
   const z = e.target.closest("[data-zoom]");
@@ -315,9 +317,11 @@ $("sheetSubmit").onclick = submit;
 
 function renderBar() {
   const mine = [...draft].filter(([k]) => k.startsWith(activeOrder + "|"));
-  const n = mine.reduce((a, [, q]) => a + q, 0);
+  let pieces = 0, grams = 0;
+  for (const [k, q] of mine) { const { product_id, variant } = split(k); const p = prod(product_id); if (!p) continue; isWeighed(p, variant) ? (grams += q * stepG(p)) : (pieces += q); }
   const label = project.orders.length > 1 ? `${order().title}: ` : "Deine Auswahl: ";
-  $("cartLabel").textContent = n ? `🧺 ${label}${n} Stück · ${mine.length} Sorte${mine.length === 1 ? "" : "n"}` : "🧺 Noch nichts ausgewählt";
+  const amount = [pieces ? `${pieces} Stück` : "", grams ? fmtKg(grams) : ""].filter(Boolean).join(" + ");
+  $("cartLabel").textContent = mine.length ? `🧺 ${label}${amount} · ${mine.length} Sorte${mine.length === 1 ? "" : "n"}` : "🧺 Noch nichts ausgewählt";
   const d = dirty();
   $("savedLabel").textContent = busy ? "wird abgeschickt …" : d ? "Noch nicht abgeschickt"
     : submittedAt ? `Abgeschickt ✓ ${fmtWhen(submittedAt)}` : "";
@@ -345,12 +349,12 @@ function renderSheet() {
     const rows = products.map((p) => {
       const lines = variantsOf(p).filter((v) => draft.get(key(o.id, p.id, v))).map((v) => {
         const q = draft.get(key(o.id, p.id, v));
-        const c = v === "stk" ? stkCost(p, q) : null;
-        if (c) total = [total[0] + c[0], total[1] + c[1]]; else if (v === "mini") minis += q; else tbd += q;
+        const c = v === "stk" ? stkCost(p, q) : isWeighed(p, v) ? gramCost(p, q * stepG(p)) : null;
+        if (c) total = [total[0] + c[0], total[1] + c[1]]; else if (v === "mini" && !p.by_weight) minis += q; else tbd += 1;
         const size = variantLabel(p, v);
         return `<div class="row">${p.image ? `<img src="${esc(p.image)}" alt="">` : `<div class="noimg"></div>`}
           <div class="grow">${p.veggie ? "🌱 " : ""}${esc(p.name)}${size ? ` <span class="size">${size}</span>` : ""}<small>${esc(multiShop ? catalog.shops.find((s) => s.id === p.shop)?.name + " · " : "")}${priceText(p, v)}</small></div>
-          ${o.closed ? `<b>${q}×</b>` : stepperHtml(o.id, p.id, v, q)}</div>`;
+          ${o.closed ? `<b>${isWeighed(p, v) ? qtyText(p, v, q) : q + "×"}</b>` : stepperHtml(o.id, p.id, v, q)}</div>`;
       }).join("");
       const pn = draftNotes.get(nkey(o.id, p.id)) || "";
       const pnHtml = o.closed ? (pn ? `<p class="pnote-ro">📝 ${esc(pn)}</p>` : "")
@@ -365,8 +369,8 @@ function renderSheet() {
       ${rows || `<p class="cat-note" style="margin:6px 0">Noch nichts ausgewählt.</p>`}${noteHtml}`;
   }).join("");
   $("sheetBody").innerHTML = html;
-  const parts = [total[1] ? `Normale Teile <b>${fmtSpan(total)}</b>` : "", minis ? `${minis} Minis nach Gewicht` : "", tbd ? `${tbd} Teile, Preis folgt` : ""].filter(Boolean);
-  $("sheetTotal").innerHTML = any ? parts.join(" · ") : "";
+  const parts = [total[1] ? `Geschätzt <b>${fmtSpan(total)}</b>` : "", minis ? `+ ${minis} Minis nach Gewicht` : "", tbd ? `+ ${tbd} ${tbd === 1 ? "Position" : "Positionen"} ohne Preis` : ""].filter(Boolean);
+  $("sheetTotal").innerHTML = any ? parts.join(" ") : "";
   $("sheetBody").onclick = (e) => { const b = e.target.closest("button[data-id]"); if (b) change(b.dataset.order, b.dataset.id, b.dataset.v, +b.dataset.d); };
   // Notizen tippen: nur Entwurf aktualisieren (Feld nicht neu zeichnen, sonst springt der Cursor)
   $("sheetBody").oninput = (e) => {

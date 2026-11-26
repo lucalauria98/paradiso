@@ -49,9 +49,11 @@ create table if not exists products (
   coming_soon   boolean not null default false,
   active        boolean not null default true,
   veggie        boolean not null default false,   -- vegetarisch (🌱-Label, Filter für Gäste)
+  by_weight     boolean not null default false,   -- Käse & Co.: Gäste wählen Gramm (Schritte = mini_weight_g) statt Stück
   constraint products_size_check check (has_mini or has_piece)
 );
-alter table products add column if not exists veggie boolean not null default false;  -- für bestehende Datenbanken
+alter table products add column if not exists veggie boolean not null default false;     -- für bestehende Datenbanken
+alter table products add column if not exists by_weight boolean not null default false;  -- für bestehende Datenbanken
 
 -- ───────────── Projekte & Bestellungen ─────────────
 create table if not exists projects (

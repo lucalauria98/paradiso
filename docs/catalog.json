@@ -28,7 +28,8 @@
    "piece_price_max": 6,
    "sort": 0,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "focaccia-oliven-tomate",
@@ -46,7 +47,8 @@
    "piece_price_max": 6,
    "sort": 10,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "pizzetta-aubergine-mozzarella",
@@ -64,7 +66,8 @@
    "piece_price_max": 6,
    "sort": 20,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "panino-salsiccia-salat",
@@ -82,7 +85,8 @@
    "piece_price_max": 6,
    "sort": 30,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "auberginen-baguette",
@@ -100,7 +104,8 @@
    "piece_price_max": 6,
    "sort": 40,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "focaccia-sesam-thunfisch",
@@ -118,7 +123,8 @@
    "piece_price_max": 6,
    "sort": 50,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "focaccia-oliven-salami",
@@ -136,7 +142,8 @@
    "piece_price_max": 6,
    "sort": 60,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "focaccia-sesam-schinken",
@@ -154,7 +161,8 @@
    "piece_price_max": 6,
    "sort": 70,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "pizzetta-aubergine",
@@ -172,7 +180,8 @@
    "piece_price_max": 6,
    "sort": 80,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "pizzetta-spinat",
@@ -190,7 +199,8 @@
    "piece_price_max": 6,
    "sort": 90,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "teigtasche-sesam",
@@ -208,7 +218,8 @@
    "piece_price_max": 6,
    "sort": 100,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "teigtasche-sesam-fleisch",
@@ -226,7 +237,8 @@
    "piece_price_max": 6,
    "sort": 105,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "broetchen-gefuellt",
@@ -244,7 +256,8 @@
    "piece_price_max": 6,
    "sort": 110,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "broetchen-gefuellt-fleisch",
@@ -262,7 +275,8 @@
    "piece_price_max": 6,
    "sort": 115,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "rolle-aubergine-schinken",
@@ -280,7 +294,8 @@
    "piece_price_max": 6,
    "sort": 120,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "pizzetta-wuerstchen-pommes",
@@ -298,7 +313,8 @@
    "piece_price_max": 6,
    "sort": 130,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "koerbchen-prosciutto",
@@ -316,7 +332,8 @@
    "piece_price_max": 6,
    "sort": 140,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "pizza-brioche",
@@ -334,7 +351,8 @@
    "piece_price_max": 6,
    "sort": 150,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "pizza-brioche-fleisch",
@@ -352,7 +370,8 @@
    "piece_price_max": 6,
    "sort": 155,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "frittiert",
@@ -370,7 +389,8 @@
    "piece_price_max": 6,
    "sort": 160,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "frittiert-fleisch",
@@ -388,7 +408,8 @@
    "piece_price_max": 6,
    "sort": 165,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "arancini",
@@ -406,7 +427,8 @@
    "piece_price_max": 6,
    "sort": 170,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "arancini-fleisch",
@@ -424,7 +446,8 @@
    "piece_price_max": 6,
    "sort": 175,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "calzone",
@@ -442,7 +465,8 @@
    "piece_price_max": 6,
    "sort": 180,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "calzone-fleisch",
@@ -460,7 +484,8 @@
    "piece_price_max": 6,
    "sort": 185,
    "coming_soon": false,
-   "veggie": false
+   "veggie": false,
+   "by_weight": false
   },
   {
    "id": "zucker-krapfen",
@@ -478,7 +503,8 @@
    "piece_price_max": null,
    "sort": 190,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "krapfen-creme",
@@ -496,7 +522,8 @@
    "piece_price_max": null,
    "sort": 200,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "gebaeck-muschel",
@@ -514,7 +541,8 @@
    "piece_price_max": null,
    "sort": 210,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "teilchen-creme",
@@ -532,7 +560,8 @@
    "piece_price_max": null,
    "sort": 220,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "cornetto-creme",
@@ -550,7 +579,8 @@
    "piece_price_max": null,
    "sort": 230,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "cornetto-schoko",
@@ -568,7 +598,8 @@
    "piece_price_max": null,
    "sort": 240,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "cornetto-schoko-streifen",
@@ -586,7 +617,8 @@
    "piece_price_max": null,
    "sort": 250,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "cornetto-pistazie",
@@ -604,7 +636,8 @@
    "piece_price_max": null,
    "sort": 260,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "cornetto-natur",
@@ -622,7 +655,8 @@
    "piece_price_max": null,
    "sort": 270,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-cannoli-ricotta",
@@ -640,7 +674,8 @@
    "piece_price_max": null,
    "sort": 280,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-cannoli-vanille",
@@ -658,7 +693,8 @@
    "piece_price_max": null,
    "sort": 290,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-cannoli-schoko",
@@ -676,7 +712,8 @@
    "piece_price_max": null,
    "sort": 300,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-sfogliatelle-creme",
@@ -694,7 +731,8 @@
    "piece_price_max": null,
    "sort": 310,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-sfogliatelle-schoko",
@@ -712,7 +750,8 @@
    "piece_price_max": null,
    "sort": 320,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-sfogliatelle-weiss",
@@ -730,7 +769,8 @@
    "piece_price_max": null,
    "sort": 330,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-obsttoertchen",
@@ -748,7 +788,8 @@
    "piece_price_max": null,
    "sort": 340,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-cassatine",
@@ -766,7 +807,8 @@
    "piece_price_max": null,
    "sort": 350,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-tiramisu",
@@ -784,7 +826,8 @@
    "piece_price_max": null,
    "sort": 360,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-bigne-vanille",
@@ -802,7 +845,8 @@
    "piece_price_max": null,
    "sort": 370,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-bigne-pistazie",
@@ -820,7 +864,8 @@
    "piece_price_max": null,
    "sort": 380,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-sahnetoertchen-frucht",
@@ -838,7 +883,8 @@
    "piece_price_max": null,
    "sort": 390,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-sahnetoertchen-kaffee",
@@ -856,7 +902,8 @@
    "piece_price_max": null,
    "sort": 400,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-glasierte-toertchen",
@@ -874,7 +921,8 @@
    "piece_price_max": null,
    "sort": 410,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mini-quadratische-toertchen",
@@ -892,7 +940,8 @@
    "piece_price_max": null,
    "sort": 420,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "cantucci",
@@ -910,7 +959,8 @@
    "piece_price_max": null,
    "sort": 430,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "amaretti",
@@ -928,7 +978,8 @@
    "piece_price_max": null,
    "sort": 440,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mandelgebaeck",
@@ -946,7 +997,8 @@
    "piece_price_max": null,
    "sort": 450,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "mandelplaetzchen",
@@ -964,7 +1016,8 @@
    "piece_price_max": null,
    "sort": 460,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "marmeladenplaetzchen",
@@ -982,7 +1035,8 @@
    "piece_price_max": null,
    "sort": 470,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "spritzgebaeck",
@@ -1000,7 +1054,8 @@
    "piece_price_max": null,
    "sort": 480,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "spritzgebaeck-schoko",
@@ -1018,7 +1073,8 @@
    "piece_price_max": null,
    "sort": 490,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "buccellati-feigenrollen",
@@ -1036,7 +1092,8 @@
    "piece_price_max": null,
    "sort": 500,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "hefeteilchen-schoko",
@@ -1054,7 +1111,8 @@
    "piece_price_max": null,
    "sort": 510,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
   },
   {
    "id": "kuchenschnitten",
@@ -1072,7 +1130,673 @@
    "piece_price_max": null,
    "sort": 520,
    "coming_soon": false,
-   "veggie": true
+   "veggie": true,
+   "by_weight": false
+  },
+  {
+   "id": "ap-sfizio-pistacchio",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Sfizio Pistacchio",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 16.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1000,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-sfizio-pepe",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Sfizio Pepe",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 14.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1010,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-sfizio-peperoncino",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Sfizio Peperoncino",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 14.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1020,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-sfizio-zafferano",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Sfizio Zafferano",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 19.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1030,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-bianco-primo-sale",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Bianco Primo Sale",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 14.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1040,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-pepato-primo-sale",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Pepato Primo Sale",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 15.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1050,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-peperoncino",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Peperoncino",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 15.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1060,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-fantasia",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Fantasia",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 16.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1070,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-rucola",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Rucola",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 16.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1080,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-olive",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Olive",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 16.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1090,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-pistacchio",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Pistacchio",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 18.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1100,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-tartufo",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Tartufo",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 19.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1110,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-noci",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Primo Sale & Käse mit Geschmack",
+   "kind": "herzhaft",
+   "name": "Noci",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 17.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1120,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-parmigiano-reggiano",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Hartkäse: Parmigiano, Grana, Pecorino",
+   "kind": "herzhaft",
+   "name": "Parmigiano Reggiano",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 24.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1130,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-parmigiano-30-mesi",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Hartkäse: Parmigiano, Grana, Pecorino",
+   "kind": "herzhaft",
+   "name": "Parmigiano 30 Mesi",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 29.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1140,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-grana-padano",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Hartkäse: Parmigiano, Grana, Pecorino",
+   "kind": "herzhaft",
+   "name": "Grana Padano",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 18.0,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1150,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-tipo-grana",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Hartkäse: Parmigiano, Grana, Pecorino",
+   "kind": "herzhaft",
+   "name": "Tipo Grana",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 16.0,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1160,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-pecorino-romano",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Hartkäse: Parmigiano, Grana, Pecorino",
+   "kind": "herzhaft",
+   "name": "Pecorino Romano",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 24.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1170,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-cacio",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Cacio",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 14.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1180,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-cacio-stagionato",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Cacio stagionato",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 19.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1190,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-taleggio",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Taleggio",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 16.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1200,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-auricchio-dolce",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Auricchio dolce",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 19.0,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1210,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-auricchio-piccante",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Auricchio piccante",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 22.0,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1220,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-provola-piccante",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Provola piccante",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 19.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1230,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-provolone-dolce-galbanone",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Provolone dolce (Galbanone)",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 17.0,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1240,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-provolone-dolce-galbanone-stagionato",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Provolone dolce (Galbanone) stagionato",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 21.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1250,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-bucaro-bianco",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Bucaro bianco",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 21.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1260,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-bucaro-pepato",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Bucaro pepato",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 22.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1270,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-primizio-siciliano",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Primizio siciliano",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 21.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1280,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-asiago",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Asiago",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 17.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1290,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-fontal",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Fontal",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 17.99,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1300,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-bel-paese",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Bel Paese",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 22.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1310,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-rodex",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Rodex",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": 21.5,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1320,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-caciocavallo",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Caciocavallo",
+   "image": null,
+   "has_mini": true,
+   "has_piece": false,
+   "mini_price_kg": null,
+   "mini_weight_g": 100,
+   "piece_price_min": null,
+   "piece_price_max": null,
+   "sort": 1330,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": true
+  },
+  {
+   "id": "ap-ricotta-vaschetta",
+   "shop": "antipasti",
+   "code": null,
+   "category": "Weitere Käse",
+   "kind": "herzhaft",
+   "name": "Ricotta (Vaschetta)",
+   "image": null,
+   "has_mini": false,
+   "has_piece": true,
+   "mini_price_kg": null,
+   "mini_weight_g": null,
+   "piece_price_min": 10.9,
+   "piece_price_max": 10.9,
+   "sort": 1340,
+   "coming_soon": false,
+   "veggie": false,
+   "by_weight": false
   }
  ]
 }

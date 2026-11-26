@@ -1,4 +1,4 @@
-import { api, DEMO, loadCatalog, esc, lineWeight, stkCost, gramCost, fmtRange, fmtKg, priceLabel, priceText, priceKnown, fmtPickup, fmtWhen, variantsOf, VARIANTS, withVariant } from "./api.js";
+import { api, DEMO, loadCatalog, esc, lineWeight, stkCost, gramCost, fmtRange, fmtKg, priceLabel, priceText, priceKnown, fmtPickup, fmtWhen, variantsOf, VARIANTS, withVariant, isWeighed, qtyText, qtyName } from "./api.js";
 import { productTabs, inTab, chipsHtml, sectionsHtml, infoHtml } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -268,7 +268,7 @@ function planOf(o) {
   const mix = o.mini_mix || {};
   const lines = [], groups = new Map();
   for (const r of totals(itemsOf(o.id))) {
-    if (r.v === "mini" && mix[r.p.category] != null) {
+    if (r.v === "mini" && !r.p.by_weight && mix[r.p.category] != null) {
       let g = groups.get(r.p.category);
       if (!g) { g = { type: "mix", category: r.p.category, shop: r.p.shop, rows: [] }; groups.set(r.p.category, g); lines.push(g); }
       g.rows.push(r);
@@ -294,7 +294,10 @@ const sumPlan = (lines) => lines.reduce((t, l) => ({
   cost: l.cost ? add(t.cost, l.cost) : t.cost, grams: t.grams + l.grams, tbd: t.tbd + (l.cost || !l.amount ? 0 : 1),
 }), { cost: [0, 0], grams: 0, tbd: 0 });
 const sumHtml = (sum) => `${sum.cost[1] ? fmtRange(sum.cost) : sum.tbd ? "" : fmtRange(sum.cost)}${sum.tbd ? `<span class="cat-note">${sum.cost[1] ? " + " : ""}${sum.tbd} × Preis folgt</span>` : ""}`;
-const people = (r) => [...r.people].map(([n, q]) => `${esc(n)} ${q}`).join(", ");
+const people = (r) => [...r.people].map(([n, q]) => `${esc(n)} ${qtyText(r.p, r.v, q)}`).join(", ");
+// Wünsche-Spalte: Stückzahl (+ geschätztes Gewicht bei Minis) bzw. Gramm bei Käse & Co.
+const wishHtml = (p, v, qty) => isWeighed(p, v) ? `<b>${qtyText(p, v, qty)}</b>`
+  : `<b>${qty}</b> Stk${v === "mini" ? `<br><span class="cat-note">≈ ${fmtKg(lineWeight(p, qty, "mini"))}</span>` : ""}`;
 
 function renderStats(o, items) {
   const orders = o ? [o] : project.orders;
@@ -313,7 +316,7 @@ function renderStats(o, items) {
     <div class="stat main"><div class="k">Geschätzte Kosten</div><div class="v">${plan.cost[1] || !plan.tbd ? fmtRange(plan.cost) : "–"}</div><div class="cat-note" style="margin:2px 0 0;color:#cfe6d8">nach Bestellmenge${plan.tbd ? ` · ${plan.tbd} Posten ohne Preis` : ""}</div></div>
     <div class="stat"><div class="k">Endbetrag</div>${finalHtml}</div>
     <div class="stat"><div class="k">Gäste mit Auswahl</div><div class="v">${active}</div><div class="cat-note" style="margin:2px 0 0">${data.participants.length} dabei · ${sent} abgeschickt</div></div>
-    <div class="stat"><div class="k">Minis (Bestellung)</div><div class="v">${fmtKg(plan.grams)}</div><div class="cat-note" style="margin:2px 0 0">${pieces} Teile gewünscht</div></div>`;
+    <div class="stat"><div class="k">Nach Gewicht (Bestellung)</div><div class="v">${fmtKg(plan.grams)}</div><div class="cat-note" style="margin:2px 0 0">${pieces} Teile gewünscht</div></div>`;
 }
 $("stats").onchange = async (e) => {
   if (e.target.id !== "finalInput") return;
@@ -327,7 +330,7 @@ function renderByProduct(o) {
   const lines = planOf(o);
   if (!lines.length) { $("byProduct").innerHTML = `<div class="empty">Noch keine Auswahl abgeschickt.</div>` + notesHtml(o); return; }
   const mix = o.mini_mix || {};
-  const cats = [...new Set(totals(itemsOf(o.id)).filter((r) => r.v === "mini").map((r) => r.p.category))];
+  const cats = [...new Set(totals(itemsOf(o.id)).filter((r) => r.v === "mini" && !r.p.by_weight).map((r) => r.p.category))];
   const mixBar = cats.length ? `<div class="mixbar no-print"><span class="cat-note">Minis gemischt bestellen:</span>
     ${cats.map((c) => `<button class="chip ${mix[c] != null ? "on" : ""}" data-mix="${esc(c)}">${mix[c] != null ? "✓ " : ""}${esc(c)}</button>`).join("")}</div>` : "";
   const unit = (v) => (v === "mini" ? "g" : "Stk");
@@ -343,18 +346,18 @@ function renderByProduct(o) {
     const tr = list.map((l) => l.type === "mix"
       ? `<tr class="mix"><td></td>
           <td><b>${esc(l.category)} – Minis gemischt</b><br><span class="cat-note">Wünsche: ${l.rows.map((r) => `${r.qty}× ${esc(r.p.name)}`).join(", ")}</span>${pnotes(l.rows.map((r) => r.p.id), true)}</td>
-          <td class="num"><b>${l.qty}</b> Stk<br><span class="cat-note">≈ ${fmtKg(l.rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini"), 0))}</span></td>
+          <td class="num">${fmtKg(l.rows.reduce((a, r) => a + lineWeight(r.p, r.qty, "mini"), 0))}</td>
           <td class="num plan">${amountHtml(l, `data-mixamt="${esc(l.category)}"`)}</td>
           <td class="num">${costHtml(l.cost)}</td></tr>`
       : `<tr><td>${l.p.image ? `<img src="${esc(l.p.image)}" alt="">` : ""}</td>
           <td><b>${esc(withVariant(l.p, l.v))}</b><br><span class="cat-note">${l.p.code ? esc(l.p.code) + " · " : ""}${esc(priceLabel(l.p, l.v))}</span><br>
           <span class="cat-note">${people(l)}</span>${pnotes([l.p.id])}</td>
-          <td class="num"><b>${l.qty}</b> Stk${l.v === "mini" ? `<br><span class="cat-note">≈ ${fmtKg(lineWeight(l.p, l.qty, "mini"))}</span>` : ""}</td>
+          <td class="num">${wishHtml(l.p, l.v, l.qty)}</td>
           <td class="num plan">${amountHtml(l, `data-plan="${l.p.id}|${l.v}"`)}</td>
           <td class="num">${costHtml(l.cost)}</td></tr>`).join("");
     return `<h3 class="serif">${esc(s.name)}</h3><table class="plan-table">
       <thead><tr><th></th><th>Produkt</th><th class="num">Wünsche</th><th class="num">Bestellen</th><th class="num">Kosten</th></tr></thead>
-      <tbody>${tr}<tr class="sub"><td></td><td>Summe ${esc(s.name)}</td><td></td><td class="num">${sum.grams ? fmtKg(sum.grams) + " Minis" : ""}</td><td class="num">${sumHtml(sum)}</td></tr></tbody></table>`;
+      <tbody>${tr}<tr class="sub"><td></td><td>Summe ${esc(s.name)}</td><td></td><td class="num">${sum.grams ? fmtKg(sum.grams) : ""}</td><td class="num">${sumHtml(sum)}</td></tr></tbody></table>`;
   }).join("") + notesHtml(o) + `<p class="cat-note no-print" style="margin-top:10px">Wünsche = was die Gäste gewählt haben. Unter „Bestellen“ legst du fest, was du beim Laden bestellst – das steht in der Bestellliste.</p>`;
 }
 
@@ -419,7 +422,7 @@ function renderWishes() {
       <thead><tr><th></th><th>Produkt</th><th class="num">Wünsche</th></tr></thead>
       <tbody>${list.map((r) => `<tr><td>${r.p.image ? `<img src="${esc(r.p.image)}" alt="">` : ""}</td>
         <td><b>${esc(withVariant(r.p, r.v))}</b><br><span class="cat-note">${people(r)}</span></td>
-        <td class="num"><b>${r.qty}</b> Stk${r.v === "mini" ? `<br><span class="cat-note">≈ ${fmtKg(lineWeight(r.p, r.qty, "mini"))}</span>` : ""}</td></tr>`).join("")}</tbody></table>`;
+        <td class="num">${wishHtml(r.p, r.v, r.qty)}</td></tr>`).join("")}</tbody></table>`;
   }).join("") + `<p class="cat-note" style="margin-top:10px">Bestellmengen (Gramm, gemischt, Reserve) legst du pro Bestellung im jeweiligen Reiter fest.</p>`;
 }
 
@@ -440,7 +443,7 @@ function renderByPerson(items) {
       ${its.length ? `<ul>${its.map((x, i) => {
         const first = its.findIndex((y) => y.order_id === x.order_id && y.product_id === x.product_id) === i;
         const pn = first ? pNotesOf(x.order_id, x.product_id).find((n) => n.participant_id === pp.id) : null;
-        return `<li>${x.qty}× ${esc(withVariant(x.p, x.variant))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}${pn ? `<br><span class="pnote-ro">📝 ${esc(pn.note)}</span>` : ""}</li>`;
+        return `<li>${esc(qtyName(x.p, x.variant, x.qty, withVariant(x.p, x.variant)))}${tag(x) ? ` <span class="cat-note">(${esc(tag(x))})</span>` : ""}${pn ? `<br><span class="pnote-ro">📝 ${esc(pn.note)}</span>` : ""}</li>`;
       }).join("")}</ul>` : ""}
       ${(data.notes || []).filter((n) => n.participant_id === pp.id && !n.product_id && (sel === ALL || n.order_id === sel))
         .map((n) => `<p class="note-ro">📝 Zur Bestellung: ${esc(n.note)}${sel === ALL ? ` <span class="cat-note">(${esc(order(n.order_id)?.title || "")})</span>` : ""}</p>`).join("")}</div>`;
@@ -466,9 +469,10 @@ function renderLog() {
     const p = prod(c.product_id);
     const name = esc(p ? withVariant(p, c.variant || variantsOf(p)[0]) : c.product_id);
     const where = sel === ALL && project.orders.length > 1 ? ` <span class="cat-note">(${esc(order(c.order_id)?.title || "gelöschte Bestellung")})</span>` : "";
-    if (!c.old) return `<li class="plus">+ ${c.new}× ${name}${where}</li>`;
+    const q = (n) => (p ? qtyText(p, c.variant || variantsOf(p)[0], n) : n);
+    if (!c.old) return `<li class="plus">+ ${p && isWeighed(p, c.variant) ? q(c.new) : c.new + "×"} ${name}${where}</li>`;
     if (!c.new) return `<li class="minus">− ${name} <span class="cat-note">(war ${c.old})</span>${where}</li>`;
-    return `<li>${name}: ${c.old} → <b>${c.new}</b>${where}</li>`;
+    return `<li>${name}: ${q(c.old)} → <b>${q(c.new)}</b>${where}</li>`;
   };
   $("byLog").innerHTML = entries.map((s, i) => {
     const first = !entries.slice(i + 1).some((x) => x.participant_id === s.participant_id && x.name === s.name);
@@ -502,7 +506,7 @@ function orderText(o) {
          ...l.rows.flatMap((r) => fwdProductNotes(o, r.p.id, done, ` (${r.p.name})`))]
       : [`${l.v === "mini" ? fmtKg(l.amount) : l.amount + "×"} ${withVariant(l.p, l.v)}${l.p.code ? ` [${l.p.code}]` : ""}`,
          ...fwdProductNotes(o, l.p.id, done)]),
-      grams ? `(Minis gesamt ca. ${fmtKg(grams)})` : "", ""];
+      grams ? `(${list.some((l) => l.type === "mix" || (l.v === "mini" && !l.p.by_weight)) ? "Minis" : "Gewicht"} gesamt ca. ${fmtKg(grams)})` : "", ""];
   })).concat(fwdNotes(o)).join("\n").trim();
 }
 $("copyList").onclick = () => {
@@ -538,7 +542,9 @@ $("newProduct").onclick = () => {
 
 function openProduct(p, defaults = {}) {
   pEdit = p; pFile = null;
-  const d = p || { shop: defaults.shop, kind: defaults.kind, has_mini: true, has_piece: true, mini_weight_g: 30, active: true, coming_soon: false };
+  // Neues Produkt: im Käse-Reiter (nach Gewicht) passend vorbelegen
+  const weighTab = catalog.products.filter(inTab(pTab)).some((x) => x.by_weight);
+  const d = p || { shop: defaults.shop, kind: defaults.kind, has_mini: true, has_piece: !weighTab, by_weight: weighTab, mini_weight_g: weighTab ? 100 : 30, active: true, coming_soon: false };
   $("pmTitle").textContent = p ? "Produkt bearbeiten" : "Neues Produkt";
   $("pmShop").innerHTML = catalog.shops.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
   $("pmCats").innerHTML = [...new Set(catalog.products.map((x) => x.category))].map((c) => `<option value="${esc(c)}">`).join("");
@@ -548,6 +554,7 @@ function openProduct(p, defaults = {}) {
   $("pmCat").value = d.category || "";
   $("pmVeggie").checked = !!d.veggie;
   $("pmMini").checked = !!d.has_mini;
+  $("pmByWeight").checked = !!d.by_weight;
   $("pmKg").value = d.mini_price_kg ?? "";
   $("pmWeight").value = d.mini_weight_g ?? 30;
   $("pmPiece").checked = !!d.has_piece;
@@ -570,7 +577,7 @@ function pmPrices() {
   const has_mini = $("pmMini").checked, has_piece = $("pmPiece").checked;
   const pmin = has_piece ? numOrNull("pmPmin") : null;
   return {
-    has_mini, has_piece,
+    has_mini, has_piece, by_weight: has_mini && $("pmByWeight").checked,
     mini_price_kg: has_mini ? numOrNull("pmKg") : null, mini_weight_g: has_mini ? Math.round(+$("pmWeight").value) || null : null,
     piece_price_min: pmin, piece_price_max: pmin == null ? null : numOrNull("pmPmax") ?? pmin,
   };
@@ -578,13 +585,14 @@ function pmPrices() {
 function pmUpdate() {
   for (const [box, fields] of [["pmMini", "pmMiniFields"], ["pmPiece", "pmPieceFields"]]) $(fields).classList.toggle("hidden", !$(box).checked);
   $("pmWeight").required = $("pmMini").checked;
+  $("pmWeightLbl").textContent = $("pmByWeight").checked ? "Schrittweite für Gäste (g)" : "Gewicht pro Mini (g)";
   const p = pmPrices();
   const vs = variantsOf(p);
   $("pmHint").textContent = vs.length
     ? "Gäste sehen: " + vs.map((v) => `${vs.length > 1 ? VARIANTS[v] + " " : ""}${priceText(p, v)}`).join(" · ")
     : "Mindestens eine Größe auswählen.";
 }
-["pmMini", "pmPiece"].forEach((id) => { $(id).onchange = pmUpdate; });
+["pmMini", "pmPiece", "pmByWeight"].forEach((id) => { $(id).onchange = pmUpdate; });
 ["pmKg", "pmWeight", "pmPmin", "pmPmax"].forEach((id) => { $(id).oninput = pmUpdate; });
 $("pmFile").onchange = () => {
   pFile = $("pmFile").files[0] || null;

@@ -52,7 +52,7 @@ const join = async (code, name) => one(anon("select * from guest_join($1, $2)", 
 const it = (order_id, product_id, variant, qty) => ({ order_id, product_id, variant, qty });
 
 console.log("Aufbau:");
-check((await one(db.query("select count(*)::int n from products"))).n === 59, "59 Produkte nach Seed");
+check((await one(db.query("select count(*)::int n from products"))).n === 94, "94 Produkte nach Seed (59 Paradiso + 35 Antipasti)");
 check((await one(db.query("select count(*)::int n from admins"))).n === 1, "Admin eingetragen (Schema zweimal ausgeführt ohne Fehler)");
 
 console.log("Admin legt Projekt + Bestellungen an:");
@@ -120,6 +120,10 @@ await db.exec("update products set coming_soon = false where id in ('cantucci', 
 check(/Nicht berechtigt/.test(await err(() => submit(lena.participant_id, "00000000-0000-0000-0000-000000000000", []))), "Falsches Secret → Nicht berechtigt");
 check(/Unbekannter Einladungslink/.test(await err(() => join("gibtsnicht", "X"))), "Falscher Einladungscode → abgelehnt");
 
+r = await submit(lena.participant_id, lena.secret, [it(o1, "cantucci", "mini", 100), it(o2, "pizza-rossa", "mini", 10), it(o1, "ap-taleggio", "mini", 3), it(o1, "ap-ricotta-vaschetta", "stk", 1)]);
+check(r.changes.length === 2, "Antipasti: Taleggio (Gramm) + Ricotta (Schale) bestellbar");
+check(/Nicht bestellbar: Taleggio/.test(await err(() => submit(lena.participant_id, lena.secret, [it(o1, "ap-taleggio", "stk", 1)]))), "Taleggio pro Stück gibt es nicht → abgelehnt");
+r = await submit(lena.participant_id, lena.secret, [it(o1, "cantucci", "mini", 100), it(o2, "pizza-rossa", "mini", 10)]);
 console.log("Geschlossene Bestellung:");
 await admin("update orders set closed = true where id = $1", [o2]);
 r = await submit(lena.participant_id, lena.secret, [it(o1, "cantucci", "mini", 100), it(o2, "pizza-rossa", "mini", 99)]);
@@ -149,7 +153,7 @@ for (const t of ["projects", "orders", "participants", "order_items", "order_not
   check(/permission denied/.test(await err(() => anon(`select * from ${t}`))), `Gast liest ${t} → verweigert`);
 }
 check(/permission denied/.test(await err(() => anon("select _guest_check($1, $2)", [lena2.participant_id, lena2.secret]))), "Gast ruft _guest_check → verweigert");
-check((await anon("select count(*)::int n from products")).rows[0].n === 59, "Gast liest Katalog");
+check((await anon("select count(*)::int n from products")).rows[0].n === 94, "Gast liest Katalog");
 check(/permission denied/.test(await err(() => anon("update products set name = 'x'"))), "Gast ändert Produkt → verweigert");
 check((await other("select * from projects")).rows.length === 0 && (await other("select * from order_items")).rows.length === 0 && (await other("select * from order_notes")).rows.length === 0, "Fremder Login sieht keine Projekte/Auswahl/Notizen");
 await other("update products set name = 'gehackt' where id = 'pizza-rossa'");

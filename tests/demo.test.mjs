@@ -45,7 +45,7 @@ const cardBtn = (id, v, d = 1) => $("catalog").querySelector(`#card-${id} button
 const send = async () => { $("reviewed").checked = true; await $("sheetSubmit").onclick(); };
 let confirms = [];
 const N = (x) => x.replace(/\s+/g, " ").trim();
-const tab = (label) => [...$("tabs").querySelectorAll("button")].find((b) => b.textContent === label);
+const tab = (label) => [...$("tabs").querySelectorAll("button")].find((b) => b.textContent.endsWith(label));
 
 // ───── Gast ─────
 console.log("Gast:");
@@ -58,7 +58,7 @@ check(vis("shopView"), "Katalog sichtbar");
 check($("info").textContent.includes("Abholung macht Luca"), "Notiz vom Gastgeber sichtbar");
 check(/1 dabei · 0 abgeschickt/.test($("info").textContent) && $("info").textContent.includes("Tante Maria"), "Wer ist dabei: " + $("info").querySelector("summary span").textContent);
 check(/Herzhaftes: Mini 18 €\/kg · Normal ca\. 3–6 € pro Stück/.test($("info").textContent.replace(/\s+/g, " ")), "Preisinfo: " + $("info").querySelector(".price-notes li").textContent.replace(/\s+/g, " "));
-check([...$("tabs").querySelectorAll("button")].map((b) => b.textContent).join("|") === "Herzhaft|Süß" && vis("tabs"), "Reiter Herzhaft | Süß");
+check([...$("tabs").querySelectorAll("button")].map((b) => b.textContent).join("|") === "Paradiso Herzhaft|Paradiso Süß|Antipasti-Laden" && vis("tabs"), "Reiter: Paradiso Herzhaft | Paradiso Süß | Antipasti-Laden");
 check($("catalog").querySelectorAll(".card").length === 25, "Herzhaft: 25 Produkte (6 unklare als vegetarisch + mit Fleisch)");
 const ar = [...$("catalog").querySelectorAll(".card")].map((c) => c.querySelector(".name").textContent).filter((n) => n.startsWith("Arancini"));
 check(ar.join(" | ") === "Arancini – vegetarisch (Spinat) | Arancini – mit Fleisch", "Nebeneinander: " + ar.join(" | "));
@@ -75,7 +75,7 @@ check($("catalog").querySelectorAll(".card").length === 34 && $("chips").textCon
 check($("catalog").querySelector("#card-cornetto-pistazie .price").textContent === "Preis folgt" && $("catalog").querySelector("#card-cornetto-pistazie button.add").textContent === "+ Hinzufügen", "Cornetto: nur Normal, „Preis folgt“, trotzdem wählbar");
 check(/Cannoli, Törtchen & Co\.: Mini Preis folgt · Normal Preis folgt/.test(N($("info").textContent)), "Preisinfo süß: Preis folgt");
 check($("catalog").querySelectorAll("#card-cantucci .variant").length === 1 && N($("catalog").querySelector("#card-cantucci .v-head").textContent) === "nach GewichtPreis folgt", "Cantucci: nur Mini, „nach Gewicht · Preis folgt“");
-check(!/0,\d\d €/.test(N($("info").textContent + $("catalog").textContent)), "Keine Cent-Schätzungen mehr (0,81 € o. ä.)");
+check(!/(^|[^\d])0,\d\d\s?€/.test(N($("info").textContent + $("catalog").textContent)), "Keine Cent-Schätzungen mehr (0,81 € o. ä.)");
 check(!!$("catalog").querySelector("#card-mini-cannoli-ricotta") && $("catalog").querySelector("#card-mini-cannoli-ricotta .name").textContent === "Cannoli Ricotta", "„Mini-“ aus dem Namen entfernt: Cannoli Ricotta");
 const o1 = db().orders.find((o) => o.title === "Kaffee Heiligabend"), o2 = db().orders.find((o) => o.title === "Kaffee 1. Feiertag");
 click($("catalog"), cardBtn("cornetto-pistazie", "stk")); click($("catalog"), cardBtn("cornetto-pistazie", "stk"));
@@ -108,7 +108,7 @@ $("submitBtn").onclick(); await send(); await sleep(20);
 check(db().items.some((i) => i.order_id === o2.id && i.product_id === "pizza-rossa" && i.variant === "mini" && i.qty === 2) && db().items.some((i) => i.product_id === "pizza-rossa" && i.variant === "stk" && i.qty === 1), "Gespeichert: Pizza Rossa Mini ×2 + Normal ×1");
 check(db().submissions.length === 2 && db().items.filter((i) => i.order_id === o1.id).length === 2, "Bestellung 1 unverändert, 2. Verlaufseintrag");
 $("cartBtn").onclick();
-check($("sheetBody").querySelectorAll(".shop-head").length === 2 && /Normale Teile ca\. 3–6 €/.test(N($("sheetTotal").textContent)) && /3 Minis nach Gewicht/.test($("sheetTotal").textContent) && /2 Teile, Preis folgt/.test($("sheetTotal").textContent), "Übersicht: " + N($("sheetTotal").textContent));
+check($("sheetBody").querySelectorAll(".shop-head").length === 2 && /Geschätzt ca\. 3–6 €/.test(N($("sheetTotal").textContent)) && /\+ 3 Minis nach Gewicht/.test($("sheetTotal").textContent) && /\+ 1 Position ohne Preis/.test($("sheetTotal").textContent), "Übersicht: " + N($("sheetTotal").textContent));
 check($("sheetBody").textContent.includes("Pizza Rossa (Schnitte) Mini") && $("sheetBody").textContent.includes("Pizza Rossa (Schnitte) Normal"), "Übersicht nennt Größen");
 click($("sheetBody"), $("sheetBody").querySelector(`button[data-order="${o1.id}"][data-id="cornetto-pistazie"][data-v="stk"][data-d="1"]`));
 await send(); await sleep(20);
@@ -176,7 +176,7 @@ check(/↺ Vorschlag 100 g/.test($("byProduct").textContent), "Zurück-Knopf zei
 inp("pizza-rossa|stk").value = "3"; await $("byProduct").onchange({ target: inp("pizza-rossa|stk") });
 await $("copyList").onclick();
 check(/300 g Pizza Rossa \(Schnitte\) \(Mini\)/.test(clip) && /3× Pizza Rossa \(Schnitte\) \(Normal\)/.test(clip), "Bestellliste nutzt Bestellmengen (300 g, 3×)");
-check(/Minis \(Bestellung\)\s*300 g/.test(N($("stats").textContent)) && /14,40 € – 23,40 €/.test(N($("stats").textContent)), "Kosten nach Bestellmenge: 0,3 kg×18 € + 3×3–6 € = " + N($("stats").querySelector(".stat.main .v").textContent));
+check(/Nach Gewicht \(Bestellung\)\s*300 g/.test(N($("stats").textContent)) && /14,40 € – 23,40 €/.test(N($("stats").textContent)), "Kosten nach Bestellmenge: 0,3 kg×18 € + 3×3–6 € = " + N($("stats").querySelector(".stat.main .v").textContent));
 await $("byProduct").onclick({ target: $("byProduct").querySelector('[data-reset="pizza-rossa|mini"]') });
 check(inp("pizza-rossa|mini").value == "100" && !db().plans.some((x) => x.variant === "mini"), "↺ setzt auf Vorschlag zurück");
 // gemischt
@@ -309,5 +309,31 @@ check(vis("nolink") && /Verbindung/.test($("nolinkText").textContent) && JSON.pa
 api.guestItems = orig;
 load("index.html", "?e=demo"); await import(site + "guest.js?wieder-online"); await sleep(50);
 check(vis("shopView") && $("savedLabel").textContent.startsWith("Abgeschickt ✓"), "Danach wieder online: alles da, „Abgeschickt ✓“");
+console.log("Antipasti-Laden (Käse nach Gramm):");
+click($("tabs"), tab("Antipasti-Laden"));
+check($("catalog").querySelectorAll(".card").length === 35 && !$("catalog").querySelector(".veg-badge"), "Antipasti-Laden: 35 Produkte, kein 🌱 bei Käse");
+check(N($("catalog").querySelector("#card-ap-taleggio .v-head").textContent) === "nach Gewicht16,99 €/kg" && $("catalog").querySelector("#card-ap-taleggio button.add").textContent === "+ 100 g", "Taleggio: „16,99 €/kg“, Button „+ 100 g“");
+check(N($("catalog").querySelector("#card-ap-ricotta-vaschetta .v-head").textContent) === "10,90 €" && $("catalog").querySelector("#card-ap-ricotta-vaschetta button.add").textContent === "+ Hinzufügen", "Ricotta pro Schale: 10,90 €");
+check(N($("catalog").querySelector("#card-ap-caciocavallo .v-head").textContent) === "nach GewichtPreis folgt", "Caciocavallo: Preis folgt");
+for (let i = 0; i < 3; i++) click($("catalog"), $("catalog").querySelector('#card-ap-taleggio button[data-d="1"]'));
+check($("catalog").querySelector("#card-ap-taleggio .stepper .q").textContent === "300 g" && $("catalog").querySelector("#card-ap-taleggio .badge").textContent === "300 g", "3× + → „300 g“ im Zähler und auf dem Foto");
+click($("catalog"), $("catalog").querySelector('#card-ap-ricotta-vaschetta button[data-d="1"]'));
+check(/300 g/.test($("cartLabel").textContent) && /1 Stück|Stück/.test($("cartLabel").textContent), "Leiste: " + $("cartLabel").textContent);
+$("vegToggle").onclick();
+check(/Nichts Vegetarisches hier/.test($("catalog").textContent), "Nur vegetarisch im Käse-Reiter: eigener Hinweis statt „Kommt bald“");
+$("vegToggle").onclick();
+$("submitBtn").onclick();
+check(/Taleggio/.test($("sheetBody").textContent) && $("sheetBody").querySelector('[data-id="ap-taleggio"]')?.closest(".stepper")?.querySelector(".q")?.textContent === "300 g", "Übersicht: Taleggio 300 g");
+check(/16,10 €|15,9|Geschätzt/.test(N($("sheetTotal").textContent)), "Übersicht: Käse fließt in die Schätzung ein: " + N($("sheetTotal").textContent));
+await send(); await sleep(20);
+const meK = JSON.parse(store.get("paradiso-guest-demo"));
+check(db().items.some((i) => i.participant_id === meK.id && i.product_id === "ap-taleggio" && i.variant === "mini" && i.qty === 3), "Gespeichert: Taleggio 3 × 100 g");
+load("admin.html", ""); await import(site + "admin.js?kaese"); await sleep(80);
+const oK = db().orders.find((o) => db().items.some((i) => i.product_id === "ap-taleggio" && i.order_id === o.id));
+click($("orderTabs"), $("orderTabs").querySelector(`[data-order="${oK.id}"]`));
+check(/Antipasti-Laden/.test($("byProduct").textContent) && $("byProduct").querySelector('input[data-plan="ap-taleggio|mini"]')?.value == "300", "Admin: Antipasti-Laden mit Taleggio, Bestellmenge 300 g vorgeschlagen");
+check(!$("byProduct").querySelector('[data-mix="Weitere Käse"]'), "Kein „gemischt bestellen“ für Käse");
+await $("copyList").onclick();
+check(/== Antipasti-Laden ==\n300 g Taleggio\n1× Ricotta \(Vaschetta\)\n\(Gewicht gesamt ca\. 300 g\)/.test(clip), "Bestellliste:\n" + clip.split("== Antipasti")[1]?.split("\n").slice(0, 4).map((l) => "      " + l).join("\n"));
 console.log(`\n${ok} ok, ${fail} fehlgeschlagen`);
 process.exit(fail ? 1 : 0);

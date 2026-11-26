@@ -10,7 +10,8 @@ export function productTabs(catalog) {
     const kinds = Object.keys(KINDS).filter((k) => catalog.products.some((p) => p.shop === s.id && p.kind === k));
     return kinds.map((k) => ({
       id: s.id + ":" + k, shop: s.id, kind: k,
-      label: shops.length > 1 ? (kinds.length > 1 ? `${s.name} · ${KINDS[k]}` : s.name) : KINDS[k],
+      // mehrere Läden: „Paradiso Herzhaft | Paradiso Süß | Antipasti-Laden“
+      label: shops.length > 1 ? (kinds.length > 1 ? `${s.name.replace(/^Café\s+/, "")} ${KINDS[k]}` : s.name) : KINDS[k],
     }));
   });
 }
@@ -25,7 +26,8 @@ export function sectionsHtml(products, cardFn) {
   return [...new Set(products.map((p) => p.category))].map((c) => {
     const list = products.filter((p) => p.category === c);
     const both = list.some((p) => variantsOf(p).length > 1);
-    const note = both ? "Als Mini oder in normaler Größe · Menge in Stück" : "Menge in Stück";
+    const grams = list.some((p) => p.by_weight), pieces = list.some((p) => !p.by_weight);
+    const note = grams ? (pieces ? "Menge in Gramm bzw. Stück" : "Menge in Gramm") : both ? "Als Mini oder in normaler Größe · Menge in Stück" : "Menge in Stück";
     return `<h2 class="cat-title" id="${catId(c)}">${esc(c)}</h2><p class="cat-note">${note}</p>
       <div class="grid">${list.map(cardFn).join("")}</div>`;
   }).join("");

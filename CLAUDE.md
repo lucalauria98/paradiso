@@ -27,6 +27,7 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 - Gäste wählen Größe + Stückzahl; Admin legt pro Bestellung die Bestellmenge fest (Minis in Gramm, Vorschlag = Wünsche × Stückgewicht auf 100 g aufgerundet; optional gemischt je Kategorie; Endbetrag laut Bon)
 - Vegetarisch: products.veggie → 🌱-Label + Filter „Nur vegetarisch“ für Gäste. Unklare Produkte (Teigtaschen, Brötchen, Pizza-Brioche, Frittiertes, Arancini, Calzone) gibt es doppelt: „– vegetarisch“ (id) und „– mit Fleisch“ (id-fleisch). Arancini veggie = Spinat.
 - Notizen (order_notes, product_id '' = ganze Bestellung): Gast schreibt pro gewähltem Produkt eine Notiz (📝-Button auf der Karte, z. B. „mit Bio-Rindhack“) und eine Anmerkung zur ganzen Bestellung. Werden als vollständiger Stand mit abgeschickt (fehlende = gelöscht; Produkt abgewählt → Notiz weg). Admin hakt „an Laden weitergeben“ an → Produkt-Notiz steht unter dem Produkt, Bestell-Anmerkung unter „Hinweise“. Änderung durch Gast setzt den Haken zurück.
+- Käse & Co.: products.by_weight → Gäste wählen Gramm (Schritt = mini_weight_g, meist 100 g), Variante 'mini'; Admin-Vorschlag = gewählte Gramm (auf 100 g aufgerundet)
 - DB: products.has_mini/has_piece (Größe gibt es) + mini_price_kg/mini_weight_g/piece_price_min/max (null = Preis folgt); order_items.variant 'mini'|'stk'; order_plan (Admin-Mengen); orders.mini_mix/final_amount
 
 ## Offene Punkte
@@ -35,7 +36,7 @@ Später kommt ein zweiter Laden dazu (nur Antipasti) – Tab existiert schon, Pr
 - Arancini & Calzone: bestellbar, aber noch ohne Foto (Nutzer reicht eins nach → im Admin hochladen)
 - Namen klären: V1-2.9 (frittiertes Teil), C-1.3 (Gebäck-Muschel)
 - 9 weitere Süß-Fotos in `Bilder_Süßkram/IMG_2821–2829` noch nicht eingearbeitet
-- Antipasti-Laden: Bilder nach `docs/img/antipasti/`, Einträge mit `"shop":"antipasti"` in catalog.json
+- Antipasti-Laden: 35 Käse von der Preisliste (Foto 26.11.) angelegt, ids `ap-…`, alle `by_weight` (Gäste wählen 100-g-Schritte), kein 🌱; Ricotta pro Schale 10,90 €; Caciocavallo Preis folgt (auf Foto verdeckt). Rückseite der Liste („GIRA“) fehlt noch → Nutzer schickt Foto
 - Später für den Chef: echte Namen/Preise, Produktfotos aus Fotobox, Abholtermin pro Bestellung
 
 ## Tests (vor jedem Push laufen lassen)

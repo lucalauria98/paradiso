@@ -37,8 +37,16 @@ export function priceText(p, v) {
   const a = p.piece_price_min, b = p.piece_price_max ?? a;
   return a === b ? euro(a) : `ca. ${String(a).replace(".", ",")}–${String(b).replace(".", ",")} €`;
 }
+// Käse & Co. (by_weight): Gäste wählen Gramm – eine Einheit = mini_weight_g (z. B. 100 g)
+export const isWeighed = (p, v) => v === "mini" && !!p.by_weight;
+export const stepG = (p) => p.mini_weight_g || 100;
+export const qtyText = (p, v, q) => (isWeighed(p, v) ? fmtKg(q * stepG(p)) : String(q));
+// mit „×“ für Stückzahlen: „3× Cornetto“ bzw. „300 g Taleggio“
+export const qtyName = (p, v, q, name) => (isWeighed(p, v) ? `${qtyText(p, v, q)} ${name}` : `${q}× ${name}`);
 // Admin: Preis + Stückgewicht der Minis (fürs Umrechnen in Gramm)
-export const priceLabel = (p, v) => (v === "mini" ? `${priceText(p, v)} · ca. ${p.mini_weight_g || "?"} g/Stück` : priceText(p, v) + (priceKnown(p, v) ? " pro Stück" : ""));
+export const priceLabel = (p, v) => (v === "mini"
+  ? `${priceText(p, v)} · ${p.by_weight ? `in ${stepG(p)}-g-Schritten` : `ca. ${p.mini_weight_g || "?"} g/Stück`}`
+  : priceText(p, v) + (priceKnown(p, v) ? " pro Stück" : ""));
 // Kosten [min, max] in € – null, wenn der Preis noch nicht bekannt ist
 export function stkCost(p, qty) { return priceKnown(p, "stk") ? [qty * p.piece_price_min, qty * (p.piece_price_max ?? p.piece_price_min)] : null; }
 export function gramCost(p, grams, kgPrice = p.mini_price_kg) { return kgPrice != null ? Array(2).fill((grams / 1000) * kgPrice) : null; }
@@ -52,7 +60,7 @@ const byPickup = (a, b) => (a.pickup_at || "~").localeCompare(b.pickup_at || "~"
 const catalogCache = {};
 const num = (v) => (v == null || v === "" ? null : +v);
 const normProduct = (x) => ({ active: true, coming_soon: false, kind: "suess", ...x, shop: x.shop_id ?? x.shop,
-  has_mini: !!x.has_mini, has_piece: !!x.has_piece, veggie: !!x.veggie,
+  has_mini: !!x.has_mini, has_piece: !!x.has_piece, veggie: !!x.veggie, by_weight: !!x.by_weight,
   mini_price_kg: num(x.mini_price_kg), mini_weight_g: num(x.mini_weight_g),
   piece_price_min: num(x.piece_price_min), piece_price_max: num(x.piece_price_max) });
 export async function loadCatalog({ all = false } = {}) {
@@ -90,7 +98,7 @@ const must = ({ data, error }) => {
 };
 const rpc = async (fn, args) => must(await (await client()).rpc(fn, args));
 const table = async (t) => (await client()).from(t);
-const PRODUCT_COLS = ["id", "shop_id", "code", "category", "kind", "name", "image", "has_mini", "has_piece", "mini_price_kg", "mini_weight_g", "piece_price_min", "piece_price_max", "sort", "coming_soon", "active", "veggie"];
+const PRODUCT_COLS = ["id", "shop_id", "code", "category", "kind", "name", "image", "has_mini", "has_piece", "mini_price_kg", "mini_weight_g", "piece_price_min", "piece_price_max", "sort", "coming_soon", "active", "veggie", "by_weight"];
 
 const live = {
   // Gäste (ohne Login, nur über die guest_*-Funktionen)

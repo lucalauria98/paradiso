@@ -101,8 +101,9 @@ Gäste greifen nie direkt auf Tabellen zu, nur über die Funktionen `guest_*` (g
   Produkt-Notizen stehen dann direkt unter dem Produkt, Anmerkungen unter „Hinweise“.
 - Bekannte Preise: herzhafte Minis **18 €/kg**, herzhaft normal **ca. 3–6 €/Stück**. Süßes: Preis folgt.
 
-## Antipasti-Laden ergänzen
-Im Admin „+ Neues Produkt“ → Laden „Antipasti-Laden“ wählen. Sobald dort ein Produkt existiert, erscheint für Gäste ein eigener Reiter.
+## Antipasti-Laden
+35 Käse von der Preisliste sind angelegt (€/kg, Gäste wählen 100-g-Schritte). Weitere im Admin über „+ Neues Produkt“ →
+Laden „Antipasti-Laden“; Haken „Gäste wählen Gramm statt Stück“ für Käse/Aufschnitt. Die Bestellliste trennt die Läden.
 
 ## Offen
 - Echte Produktnamen + Preise mit dem Chef klären, Fotos aus der Fotobox
